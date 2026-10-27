@@ -61,7 +61,7 @@ export default function App() {
 
   return (
     // O app é sempre mobile: no computador ele aparece como uma coluna de celular centralizada.
-    <div className="h-dvh bg-line">
+    <div className="starfield h-dvh">
       <div className="mx-auto flex h-full w-full max-w-md flex-col border-x border-line bg-page shadow-xl shadow-ink/10">
         <Header online={online} clock={sim?.clock_s ?? 0} />
         <StatsStrip vehicles={vehicles} trips={trips} edges={graph?.edges ?? []} />
@@ -90,7 +90,7 @@ export default function App() {
           </aside>
         </main>
 
-        <nav className="relative grid grid-cols-3 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)]" aria-label="Seções">
+        <nav className="relative grid grid-cols-3 border-t border-white/10 bg-navy-deep pb-[env(safe-area-inset-bottom)]" aria-label="Seções">
           {/* indicador que desliza até a aba ativa */}
           <span
             aria-hidden
@@ -106,7 +106,7 @@ export default function App() {
               aria-current={view === id ? 'page' : undefined}
               onClick={() => setView(id)}
               className={`flex flex-col items-center gap-0.5 py-2.5 text-xs font-semibold transition-colors ${
-                view === id ? 'text-primary' : 'text-mist hover:text-ink'
+                view === id ? 'text-white' : 'text-navy-soft hover:text-white'
               }`}
             >
               <Icon size={22} aria-hidden />

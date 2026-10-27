@@ -10,6 +10,10 @@
   --color-ink: #1f2a44;       /* texto principal */
   --color-mist: #66718d;      /* texto secundário */
 
+  --color-navy: #31498a;      /* cabeçalho e rodapé */
+  --color-navy-deep: #27396f;
+  --color-navy-soft: #b9c4e6; /* texto secundário sobre o azul */
+
   --color-primary: #3b5aa0;
   --color-primary-hover: #324e8f;
 
@@ -22,6 +26,7 @@
   --color-warn-deep: #946512;
   --color-alert: #e27c93;
   --color-alert-deep: #be3d5c;
+  --color-alert-soft: #ffb3c2;
 
   --font-display: "Unbounded", system-ui, sans-serif;
   --font-sans: "Figtree", system-ui, sans-serif;
@@ -57,6 +62,15 @@
     scrollbar-width: thin;
     scrollbar-color: #c9d0e4 transparent;
   }
+}
+
+/* Fundo fora do app: grade pontilhada discreta e uniforme (estilo caderno) */
+.starfield {
+  background-color: #e6eaf5;
+  background-image: 
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='1' fill='%236c82e6' fill-opacity='0.35'/%3E%3C/svg%3E"),
+    linear-gradient(160deg, #eef1f9 0%, #dde3f3 100%);
+  background-size: 24px 24px, 100% 100%;
 }
 
 /* Rotas ativas no mapa: o tracejado "corre" na direção do destino. */
