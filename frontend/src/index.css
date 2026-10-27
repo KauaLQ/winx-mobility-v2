@@ -1,20 +1,32 @@
 @import "tailwindcss";
 
+/* Tema claro e suave. As cores vêm do degradê da logo (ciano > azul > violeta) sobre fundos
+   quase brancos, com azul-marinho como cor de ação. Mantenha em sincronia com PALETTE em src/constants.js. */
 @theme {
-  --color-abyss: #0d0b2e;
-  --color-deck: #151247;
-  --color-rail: #2b2765;
-  --color-mist: #aeaae0;
-  --color-wx-cyan: #25c4dd;
-  --color-wx-cobalt: #4a5fe0;
-  --color-wx-violet: #9645cf;
-  --color-warn: #f4b740;
-  --color-alert: #ff5c7a;
+  --color-page: #f3f5fb;      /* fundo das telas */
+  --color-surface: #ffffff;   /* cartões, cabeçalho, barras */
+  --color-tint: #edf0f9;      /* fundos suaves: seleção, campos agrupados */
+  --color-line: #e1e6f1;      /* bordas e divisórias */
+  --color-ink: #1f2a44;       /* texto principal */
+  --color-mist: #66718d;      /* texto secundário */
+
+  --color-primary: #3b5aa0;
+  --color-primary-hover: #324e8f;
+
+  --color-wx-cyan: #3fb4cc;
+  --color-wx-cyan-deep: #1d8199;
+  --color-wx-cobalt: #6c82e6;
+  --color-wx-violet: #a77be0;
+  --color-wx-violet-deep: #7a4fc2;
+  --color-warn: #e3ad4a;
+  --color-warn-deep: #946512;
+  --color-alert: #e27c93;
+  --color-alert-deep: #be3d5c;
 
   --font-display: "Unbounded", system-ui, sans-serif;
   --font-sans: "Figtree", system-ui, sans-serif;
 
-  --background-image-wx-gradient: linear-gradient(110deg, #25c4dd 0%, #4a5fe0 55%, #9645cf 100%);
+  --background-image-wx-gradient: linear-gradient(110deg, #5cc6da 0%, #6d82e8 55%, #a97fe0 100%);
 }
 
 @layer base {
@@ -24,12 +36,12 @@
     height: 100%;
   }
   body {
-    @apply bg-abyss font-sans text-white antialiased;
+    @apply bg-page font-sans text-ink antialiased;
     font-variant-numeric: tabular-nums;
     overscroll-behavior: none;
   }
   :focus-visible {
-    outline: 2px solid theme('colors.wx.cyan');
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
 }
@@ -43,7 +55,7 @@
   }
   .scroll-thin {
     scrollbar-width: thin;
-    scrollbar-color: #2b2765 transparent;
+    scrollbar-color: #c9d0e4 transparent;
   }
 }
 

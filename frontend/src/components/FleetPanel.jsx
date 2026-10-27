@@ -19,18 +19,18 @@ export default function FleetPanel({ vehicles, trips, nodesById, selectedId, onS
   const recent = trips.filter((t) => t.phase === 'concluida').slice(-5).reverse()
 
   return (
-    <div className="flex flex-col">
-      <div className="border-b border-rail px-4 pb-0 pt-4">
-        <h2 className="font-display text-sm font-bold">Frota</h2>
-        <div role="group" aria-label="Filtrar veículos" className="mt-3 flex gap-5">
+    <div className="flex flex-col gap-4 p-4">
+      <div>
+        <h2 className="font-display text-sm font-bold text-ink">Frota</h2>
+        <div role="group" aria-label="Filtrar veículos" className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-tint p-1">
           {FILTERS.map(([id, label]) => (
             <button
               key={id}
               type="button"
               aria-pressed={filter === id}
               onClick={() => setFilter(id)}
-              className={`border-b-2 pb-2.5 text-sm font-semibold ${
-                filter === id ? 'border-wx-cyan text-white' : 'border-transparent text-mist hover:text-white'
+              className={`rounded-lg py-2 text-sm font-semibold transition-colors ${
+                filter === id ? 'bg-surface text-ink shadow-sm' : 'text-mist hover:text-ink'
               }`}
             >
               {label}
@@ -39,9 +39,9 @@ export default function FleetPanel({ vehicles, trips, nodesById, selectedId, onS
         </div>
       </div>
 
-      {list.length === 0 && <p className="p-4 text-sm text-mist">Nenhum veículo neste filtro.</p>}
+      {list.length === 0 && <p className="text-sm text-mist">Nenhum veículo neste filtro.</p>}
 
-      <ul>
+      <ul className="flex flex-col gap-3">
         {list.map((v) => {
           const meta = VEHICLE_META[v.type]
           const trip = v.status === 'em_corrida' ? tripsById[v.trip_id] : null
@@ -53,18 +53,24 @@ export default function FleetPanel({ vehicles, trips, nodesById, selectedId, onS
                 type="button"
                 aria-pressed={selected}
                 onClick={() => onSelect(selected ? null : v.id)}
-                className={`relative flex w-full gap-3 border-b border-rail py-3 pl-5 pr-4 text-left ${
-                  selected ? 'bg-rail/70' : 'hover:bg-rail/30'
+                className={`flex w-full gap-3 rounded-xl border bg-surface p-3 text-left transition-colors ${
+                  selected ? 'border-primary ring-1 ring-primary/30' : 'border-line hover:border-wx-cobalt/50'
                 }`}
               >
-                <span className="absolute inset-y-0 left-0 w-1" style={{ backgroundColor: meta.color }} />
-                <span className="text-2xl leading-none" aria-hidden>
-                  {meta.emoji}
+                <span
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl"
+                  style={{ backgroundColor: `${meta.color}26`, color: meta.deep }}
+                >
+                  <meta.Icon size={24} aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center justify-between gap-2">
-                    <span className="font-semibold">{v.id}</span>
-                    <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color: busy ? '#c58bf0' : '#25c4dd' }}>
+                    <span className="font-semibold text-ink">{v.id}</span>
+                    <span
+                      className={`flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        busy ? 'bg-wx-violet/15 text-wx-violet-deep' : 'bg-wx-cyan/15 text-wx-cyan-deep'
+                      }`}
+                    >
                       <span className="h-1.5 w-1.5 rounded-full bg-current" />
                       {busy ? 'Em corrida' : 'Disponível'}
                     </span>
@@ -72,7 +78,7 @@ export default function FleetPanel({ vehicles, trips, nodesById, selectedId, onS
 
                   {trip ? (
                     <>
-                      <span className="mt-1 block text-sm">{PHASE_LABEL[trip.phase]}</span>
+                      <span className="mt-1 block text-sm text-ink">{PHASE_LABEL[trip.phase]}</span>
                       <span className="block text-sm text-mist">
                         {KIND_META[trip.request.kind].label} de {name(trip.request.origin_node)} para{' '}
                         {name(trip.request.destination_node)}
@@ -81,7 +87,7 @@ export default function FleetPanel({ vehicles, trips, nodesById, selectedId, onS
                       <span className="mt-1 flex flex-wrap gap-x-3 text-xs text-mist">
                         <span>Previsão total {fmtDuration(trip.eta_total_s)}</span>
                         {trip.reroutes > 0 && (
-                          <span className="text-warn">
+                          <span className="font-medium text-warn-deep">
                             {trip.reroutes} {trip.reroutes > 1 ? 'recálculos' : 'recálculo'} de rota
                           </span>
                         )}
@@ -100,12 +106,12 @@ export default function FleetPanel({ vehicles, trips, nodesById, selectedId, onS
       </ul>
 
       {recent.length > 0 && (
-        <section className="p-4">
-          <h3 className="text-sm font-semibold">Últimas viagens concluídas</h3>
+        <section className="rounded-xl border border-line bg-surface p-4">
+          <h3 className="text-sm font-semibold text-ink">Últimas viagens concluídas</h3>
           <ul className="mt-2 flex flex-col gap-2 text-sm text-mist">
             {recent.map((t) => (
               <li key={t.id}>
-                <b className="font-semibold text-white">{t.vehicle_id}</b> levou {KIND_META[t.request.kind].label.toLowerCase()} de{' '}
+                <b className="font-semibold text-ink">{t.vehicle_id}</b> levou {KIND_META[t.request.kind].label.toLowerCase()} de{' '}
                 {name(t.request.origin_node)} para {name(t.request.destination_node)} em{' '}
                 {fmtDuration(t.completed_at_s - t.created_at_s)}
               </li>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { TICK_MS, VEHICLE_META, trafficColor } from '../constants'
+import { MdAdd, MdBlock, MdMyLocation, MdRemove } from 'react-icons/md'
+import { PALETTE as C, TICK_MS, VEHICLE_META, trafficColor } from '../constants'
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
 
@@ -167,7 +168,7 @@ export default function PlantMap({ graph, vehicles, draft, selectedId, onSelectV
   }
 
   return (
-    <div className="absolute inset-0 bg-abyss">
+    <div className="absolute inset-0 bg-page">
       <svg
         ref={svgRef}
         viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
@@ -178,7 +179,7 @@ export default function PlantMap({ graph, vehicles, draft, selectedId, onSelectV
       >
         <defs>
           <pattern id="plant-grid" width="50" height="50" patternUnits="userSpaceOnUse">
-            <path d="M50 0H0V50" fill="none" stroke="#2b2765" strokeOpacity="0.45" />
+            <path d="M50 0H0V50" fill="none" stroke={C.line} />
           </pattern>
         </defs>
         <rect x="-100000" y="-100000" width="200000" height="200000" fill="url(#plant-grid)" />
@@ -200,9 +201,9 @@ export default function PlantMap({ graph, vehicles, draft, selectedId, onSelectV
           ].filter(Boolean)
           return (
             <g key={`${s.source}-${s.target}`} className="pointer-events-none">
-              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#2b2765" strokeWidth="18" strokeLinecap="round" />
+              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={C.casing} strokeWidth="18" strokeLinecap="round" />
               {s.factor >= 1.2 && (
-                <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={color} strokeOpacity="0.3" strokeWidth="18" strokeLinecap="round" />
+                <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={color} strokeOpacity="0.28" strokeWidth="18" strokeLinecap="round" />
               )}
               <line
                 x1={a.x}
@@ -210,11 +211,12 @@ export default function PlantMap({ graph, vehicles, draft, selectedId, onSelectV
                 x2={b.x}
                 y2={b.y}
                 stroke={color}
+                strokeOpacity="0.9"
                 strokeWidth="3"
                 strokeLinecap="round"
                 strokeDasharray={s.oneway ? '9 7' : undefined}
               />
-              {s.oneway && <path d="M-6 -6 L7 0 L-6 6 Z" fill="#fff" transform={`translate(${mx} ${my}) rotate(${angle})`} />}
+              {s.oneway && <path d="M-6 -6 L7 0 L-6 6 Z" fill={C.ink} transform={`translate(${mx} ${my}) rotate(${angle})`} />}
               {showRestrictions && tags.length > 0 && (
                 <text
                   x={mx}
@@ -222,8 +224,8 @@ export default function PlantMap({ graph, vehicles, draft, selectedId, onSelectV
                   textAnchor="middle"
                   fontSize="11"
                   fontWeight="600"
-                  fill="#aeaae0"
-                  stroke="#0d0b2e"
+                  fill={C.mist}
+                  stroke={C.page}
                   strokeWidth="3"
                   paintOrder="stroke"
                 >
@@ -253,14 +255,14 @@ export default function PlantMap({ graph, vehicles, draft, selectedId, onSelectV
           )
         })}
         {target && (
-          <circle cx={target.x} cy={target.y} r="17" fill="none" stroke="#fff" strokeWidth="1.5" strokeDasharray="4 4" className="pointer-events-none" />
+          <circle cx={target.x} cy={target.y} r="17" fill="none" stroke={C.ink} strokeWidth="1.5" strokeDasharray="4 4" className="pointer-events-none" />
         )}
 
         {/* Nós: clique para escolher origem (A) e destino (B) */}
         {nodes.map((n) => {
           const isA = draft.origin === n.id
           const isB = draft.destination === n.id
-          const color = isA ? '#25c4dd' : isB ? '#9645cf' : '#7d79c9'
+          const color = isA ? C.cyan : isB ? C.violet : C.node
           const pick = () => !moved.current && onPickNode(n.id)
           return (
             <g
@@ -274,9 +276,9 @@ export default function PlantMap({ graph, vehicles, draft, selectedId, onSelectV
             >
               <circle cx={n.x} cy={n.y} r="24" fill="transparent" />
               {(isA || isB) && <circle cx={n.x} cy={n.y} r="19" fill={color} opacity="0.25" className="animate-pulse" />}
-              <circle cx={n.x} cy={n.y} r="10" fill="#151247" stroke={color} strokeWidth="3" />
+              <circle cx={n.x} cy={n.y} r="10" fill={C.surface} stroke={color} strokeWidth="3" />
               {(isA || isB) && (
-                <text x={n.x} y={n.y} textAnchor="middle" dominantBaseline="central" fontSize="10" fontWeight="700" fill={color}>
+                <text x={n.x} y={n.y} textAnchor="middle" dominantBaseline="central" fontSize="10" fontWeight="700" fill={isA ? C.cyanDeep : C.violetDeep}>
                   {isA ? 'A' : 'B'}
                 </text>
               )}
@@ -286,8 +288,8 @@ export default function PlantMap({ graph, vehicles, draft, selectedId, onSelectV
                 textAnchor="middle"
                 fontSize="13"
                 fontWeight="600"
-                fill="#fff"
-                stroke="#0d0b2e"
+                fill={C.ink}
+                stroke={C.page}
                 strokeWidth="4"
                 paintOrder="stroke"
                 className="pointer-events-none"
@@ -318,13 +320,11 @@ export default function PlantMap({ graph, vehicles, draft, selectedId, onSelectV
               {active && (
                 <circle r="17" fill={meta.color} opacity="0.3" className="animate-ping" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
               )}
-              <circle r="13" fill="#151247" stroke={meta.color} strokeWidth={isSel ? 4 : 2.5} />
-              {isSel && <circle r="19" fill="none" stroke="#fff" strokeWidth="1.5" strokeDasharray="3 3" />}
-              <text textAnchor="middle" dominantBaseline="central" fontSize="14" className="pointer-events-none">
-                {meta.emoji}
-              </text>
+              <circle r="13" fill={C.surface} stroke={meta.color} strokeWidth={isSel ? 4 : 2.5} />
+              {isSel && <circle r="19" fill="none" stroke={C.ink} strokeWidth="1.5" strokeDasharray="3 3" />}
+              <meta.Icon size={16} x={-8} y={-8} style={{ color: meta.deep }} className="pointer-events-none" />
               {isSel && (
-                <text y="-24" textAnchor="middle" fontSize="12" fontWeight="700" fill="#fff" stroke="#0d0b2e" strokeWidth="4" paintOrder="stroke">
+                <text y="-24" textAnchor="middle" fontSize="12" fontWeight="700" fill={C.ink} stroke={C.page} strokeWidth="4" paintOrder="stroke">
                   {v.id}
                 </text>
               )}
@@ -338,45 +338,46 @@ export default function PlantMap({ graph, vehicles, draft, selectedId, onSelectV
         type="button"
         aria-pressed={showRestrictions}
         onClick={() => setShowRestrictions((s) => !s)}
-        className={`absolute right-3 top-3 h-12 rounded-xl border px-3 text-sm font-semibold backdrop-blur ${
-          showRestrictions ? 'border-wx-cyan bg-deck/90 text-wx-cyan' : 'border-rail bg-deck/90 text-mist'
+        className={`absolute right-3 top-3 flex h-12 items-center gap-1.5 rounded-xl border bg-surface/95 px-3 text-sm font-semibold shadow-sm backdrop-blur transition-colors ${
+          showRestrictions ? 'border-primary text-primary' : 'border-line text-mist'
         }`}
       >
+        <MdBlock size={18} aria-hidden />
         Restrições
       </button>
 
-      <ul className="pointer-events-none absolute bottom-3 left-3 flex flex-col gap-1 rounded-lg bg-deck/90 px-3 py-2 text-xs text-mist backdrop-blur">
+      <ul className="pointer-events-none absolute bottom-3 left-3 flex flex-col gap-1 rounded-lg border border-line bg-surface/95 px-3 py-2 text-xs text-mist shadow-sm backdrop-blur">
         {[
-          ['Via livre', '#25c4dd'],
-          ['Via cheia', '#f4b740'],
-          ['Congestionada', '#ff5c7a'],
-        ].map(([label, c]) => (
+          ['Via livre', C.cyan],
+          ['Via cheia', C.warn],
+          ['Congestionada', C.alert],
+        ].map(([label, color]) => (
           <li key={label} className="flex items-center gap-2">
-            <span className="h-0.5 w-4 rounded" style={{ backgroundColor: c }} />
+            <span className="h-0.5 w-4 rounded" style={{ backgroundColor: color }} />
             {label}
           </li>
         ))}
         <li className="flex items-center gap-2">
-          <span className="w-4 text-center text-white">▸</span>
+          <span className="w-4 text-center text-ink">▸</span>
           Mão única
         </li>
       </ul>
 
-      <div className="absolute bottom-3 right-3 flex flex-col overflow-hidden rounded-xl border border-rail bg-deck/90 backdrop-blur">
+      <div className="absolute bottom-3 right-3 flex flex-col overflow-hidden rounded-xl border border-line bg-surface/95 shadow-sm backdrop-blur">
         {[
-          ['Aproximar', '+', () => zoomBy(1 / 1.4)],
-          ['Afastar', '−', () => zoomBy(1.4)],
-          ['Enquadrar a planta', '⌖', reset],
-        ].map(([label, glyph, action]) => (
+          ['Aproximar', MdAdd, () => zoomBy(1 / 1.4)],
+          ['Afastar', MdRemove, () => zoomBy(1.4)],
+          ['Enquadrar a planta', MdMyLocation, reset],
+        ].map(([label, Glyph, action]) => (
           <button
             key={label}
             type="button"
             aria-label={label}
             title={label}
             onClick={action}
-            className="h-11 w-11 text-lg text-mist hover:text-white [&:not(:last-child)]:border-b [&:not(:last-child)]:border-rail"
+            className="grid h-11 w-11 place-items-center text-mist transition-colors hover:text-ink [&:not(:last-child)]:border-b [&:not(:last-child)]:border-line"
           >
-            {glyph}
+            <Glyph size={20} aria-hidden />
           </button>
         ))}
       </div>

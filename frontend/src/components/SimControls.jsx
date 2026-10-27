@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MdPause, MdPlayArrow, MdRestartAlt } from 'react-icons/md'
 import { api } from '../api'
 
 const SPEEDS = [1, 5, 10]
@@ -28,17 +29,17 @@ export default function SimControls({ running, speed, setSpeed, onChanged, onRes
   const reset = () => act(async () => { await api.resetSim(); onReset() })
 
   return (
-    <div className="flex items-center gap-1 rounded-xl border border-rail bg-deck/90 p-1 backdrop-blur">
+    <div className="flex items-center gap-1 rounded-xl border border-line bg-surface/95 p-1 shadow-sm backdrop-blur">
       <button
         type="button"
         onClick={toggle}
         disabled={busy}
         aria-label={running ? 'Pausar simulação' : 'Iniciar simulação'}
-        className={`flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-bold disabled:opacity-60 ${
-          running ? 'bg-rail text-white' : 'bg-wx-cyan text-abyss'
+        className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-bold transition-colors disabled:opacity-60 ${
+          running ? 'bg-tint text-ink hover:bg-line' : 'bg-primary text-white hover:bg-primary-hover'
         }`}
       >
-        <span aria-hidden>{running ? '❚❚' : '▶'}</span>
+        {running ? <MdPause size={20} aria-hidden /> : <MdPlayArrow size={20} aria-hidden />}
         <span className="hidden sm:inline">{running ? 'Pausar' : 'Iniciar'}</span>
       </button>
 
@@ -49,7 +50,9 @@ export default function SimControls({ running, speed, setSpeed, onChanged, onRes
             type="button"
             aria-pressed={speed === s}
             onClick={() => changeSpeed(s)}
-            className={`h-10 w-9 rounded-lg text-sm font-semibold ${speed === s ? 'bg-rail text-wx-cyan' : 'text-mist hover:text-white'}`}
+            className={`h-10 w-9 rounded-lg text-sm font-semibold transition-colors ${
+              speed === s ? 'bg-tint text-primary' : 'text-mist hover:text-ink'
+            }`}
           >
             {s}×
           </button>
@@ -62,9 +65,9 @@ export default function SimControls({ running, speed, setSpeed, onChanged, onRes
         disabled={busy}
         aria-label="Reiniciar simulação"
         title="Reiniciar simulação"
-        className="h-10 w-10 rounded-lg text-lg text-mist hover:text-white disabled:opacity-60"
+        className="grid h-10 w-10 place-items-center rounded-lg text-mist transition-colors hover:text-ink disabled:opacity-60"
       >
-        ↺
+        <MdRestartAlt size={22} aria-hidden />
       </button>
     </div>
   )
