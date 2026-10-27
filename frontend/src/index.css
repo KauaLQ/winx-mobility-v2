@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --color-abyss: #0d0b2e;
+  --color-deck: #151247;
+  --color-rail: #2b2765;
+  --color-mist: #aeaae0;
+  --color-wx-cyan: #25c4dd;
+  --color-wx-cobalt: #4a5fe0;
+  --color-wx-violet: #9645cf;
+  --color-warn: #f4b740;
+  --color-alert: #ff5c7a;
+
+  --font-display: "Unbounded", system-ui, sans-serif;
+  --font-sans: "Figtree", system-ui, sans-serif;
+
+  --background-image-wx-gradient: linear-gradient(110deg, #25c4dd 0%, #4a5fe0 55%, #9645cf 100%);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-abyss font-sans text-white antialiased;
+    font-variant-numeric: tabular-nums;
+    overscroll-behavior: none;
+  }
+  :focus-visible {
+    outline: 2px solid theme('colors.wx.cyan');
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #2b2765 transparent;
+  }
+}
+
+/* Rotas ativas no mapa: o tracejado "corre" na direção do destino. */
+@keyframes route-flow {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+.route-flow {
+  animation: route-flow 1.2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
