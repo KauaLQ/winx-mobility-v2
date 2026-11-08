@@ -6,7 +6,7 @@ import { KIND_META, VEHICLE_META, fmtDuration } from '../constants'
 const field =
   'w-full appearance-none rounded-xl border border-line bg-surface px-3 py-3 pr-10 text-base text-ink transition-colors focus:border-primary'
 
-export default function RequestPanel({ nodes, vehicles, draft, setDraft, onDispatched }) {
+export default function RequestPanel({ nodes, vehicles, draft, setDraft, requesterId, onDispatched }) {
   const [kind, setKind] = useState('passageiro')
   const [modal, setModal] = useState('carro')
   const [loading, setLoading] = useState(false)
@@ -45,6 +45,7 @@ export default function RequestPanel({ nodes, vehicles, draft, setDraft, onDispa
         modal,
         origin_node: draft.origin,
         destination_node: draft.destination,
+        requested_by: requesterId,
       })
       setResult({ ok: true, trip })
       onDispatched(trip)

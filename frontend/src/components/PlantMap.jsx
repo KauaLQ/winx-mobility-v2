@@ -107,11 +107,23 @@ function useViewBox(home) {
 
 // ---------- Mapa ----------
 
-export default function PlantMap({ graph, vehicles, draft, selectedId, onSelectVehicle, onPickNode }) {
-  const [showRestrictions, setShowRestrictions] = useState(true)
+// showVehicles = false esconde veículos e rotas; canSeeRestrictions = false esconde as restrições das vias.
+// Sem onPickNode, os nós não são clicáveis (só quem solicita transporte escolhe origem e destino no mapa).
+export default function PlantMap({
+  graph,
+  vehicles: allVehicles,
+  showVehicles = true,
+  canSeeRestrictions = true,
+  draft,
+  selectedId,
+  onSelectVehicle,
+  onPickNode,
+}) {
+  const [showRestrictions, setShowRestrictions] = useState(canSeeRestrictions)
 
   const nodes = useMemo(() => graph?.nodes ?? [], [graph])
   const nodesById = useMemo(() => Object.fromEntries(nodes.map((n) => [n.id, n])), [nodes])
+  const vehicles = useMemo(() => (showVehicles ? allVehicles : []), [showVehicles, allVehicles])
 
   const home = useMemo(() => {
     if (!nodes.length) return null
@@ -258,21 +270,22 @@ export default function PlantMap({ graph, vehicles, draft, selectedId, onSelectV
           <circle cx={target.x} cy={target.y} r="17" fill="none" stroke={C.ink} strokeWidth="1.5" strokeDasharray="4 4" className="pointer-events-none" />
         )}
 
-        {/* Nós: clique para escolher origem (A) e destino (B) */}
+        {/* Nós: com onPickNode, clique para escolher origem (A) e destino (B) */}
         {nodes.map((n) => {
           const isA = draft.origin === n.id
           const isB = draft.destination === n.id
           const color = isA ? C.cyan : isB ? C.violet : C.node
-          const pick = () => !moved.current && onPickNode(n.id)
+          const pickable = Boolean(onPickNode)
+          const choose = () => onPickNode?.(n.id)
           return (
             <g
               key={n.id}
-              role="button"
-              tabIndex={0}
-              aria-label={`Escolher ${n.name}`}
-              className="cursor-pointer"
-              onClick={pick}
-              onKeyDown={onKey(() => onPickNode(n.id))}
+              role={pickable ? 'button' : undefined}
+              tabIndex={pickable ? 0 : undefined}
+              aria-label={pickable ? `Escolher ${n.name}` : undefined}
+              className={pickable ? 'cursor-pointer' : undefined}
+              onClick={() => !moved.current && choose()}
+              onKeyDown={onKey(choose)}
             >
               <circle cx={n.x} cy={n.y} r="24" fill="transparent" />
               {(isA || isB) && <circle cx={n.x} cy={n.y} r="19" fill={color} opacity="0.25" className="animate-pulse" />}
@@ -334,17 +347,19 @@ export default function PlantMap({ graph, vehicles, draft, selectedId, onSelectV
       </svg>
 
       {/* Controles sobre o mapa */}
-      <button
-        type="button"
-        aria-pressed={showRestrictions}
-        onClick={() => setShowRestrictions((s) => !s)}
-        className={`absolute right-3 top-3 flex h-12 items-center gap-1.5 rounded-xl border bg-surface/95 px-3 text-sm font-semibold shadow-sm backdrop-blur transition-colors ${
-          showRestrictions ? 'border-primary text-primary' : 'border-line text-mist'
-        }`}
-      >
-        <MdBlock size={18} aria-hidden />
-        Restrições
-      </button>
+      {canSeeRestrictions && (
+        <button
+          type="button"
+          aria-pressed={showRestrictions}
+          onClick={() => setShowRestrictions((s) => !s)}
+          className={`absolute right-3 top-3 flex h-12 items-center gap-1.5 rounded-xl border bg-surface/95 px-3 text-sm font-semibold shadow-sm backdrop-blur transition-colors ${
+            showRestrictions ? 'border-primary text-primary' : 'border-line text-mist'
+          }`}
+        >
+          <MdBlock size={18} aria-hidden />
+          Restrições
+        </button>
+      )}
 
       <ul className="pointer-events-none absolute bottom-3 left-3 flex flex-col gap-1 rounded-lg border border-line bg-surface/95 px-3 py-2 text-xs text-mist shadow-sm backdrop-blur">
         {[

@@ -1,4 +1,18 @@
-import { MdAirportShuttle, MdDirectionsBus, MdDirectionsCar, MdInventory2, MdLocalShipping, MdPerson } from 'react-icons/md'
+import {
+  MdAddLocationAlt,
+  MdAirportShuttle,
+  MdDirectionsBus,
+  MdDirectionsCar,
+  MdDriveEta,
+  MdHistory,
+  MdInsights,
+  MdInventory2,
+  MdLocalShipping,
+  MdMap,
+  MdPerson,
+  MdSpaceDashboard,
+  MdSpeed,
+} from 'react-icons/md'
 
 // Intervalo entre ticks da simulação (e entre leituras do estado). 500 ms deixa o movimento fluido.
 export const TICK_MS = 500
@@ -44,6 +58,69 @@ export const PHASE_LABEL = {
   concluida: 'Concluída',
 }
 
+// ---------- Perfis de acesso ----------
+// Sem login por enquanto: o perfil é escolhido na tela inicial. Quando houver autenticação,
+// USER_ID e DRIVER_VEHICLE_ID passam a vir da sessão.
+export const USER_ID = 'usuario-1'
+export const DRIVER_VEHICLE_ID = 'carro-1'
+
+// tabs = [rótulo, ícone] da 1ª, 2ª e 3ª aba, nessa ordem.
+// map = o que o mapa mostra e permite para o perfil.
+// ownsTrip = quais viagens aparecem no histórico do perfil.
+export const PROFILES = {
+  usuario: {
+    label: 'Usuário final',
+    description: 'Solicite transporte de pessoas ou insumos e acompanhe suas viagens.',
+    Icon: MdPerson,
+    tabs: [
+      ['Solicitar', MdAddLocationAlt],
+      ['Mapa', MdMap],
+      ['Histórico', MdHistory],
+    ],
+    map: { vehicles: false, restrictions: false, simControls: false },
+    ownsTrip: (trip) => trip.request.requested_by === USER_ID,
+  },
+  motorista: {
+    label: 'Motorista',
+    description: 'Veja a corrida atual, o seu turno e o trajeto no mapa.',
+    Icon: MdDriveEta,
+    vehicleId: DRIVER_VEHICLE_ID,
+    tabs: [
+      ['Turno', MdSpeed],
+      ['Mapa', MdMap],
+      ['Histórico', MdHistory],
+    ],
+    map: { vehicles: true, restrictions: true, simControls: false },
+    ownsTrip: (trip) => trip.vehicle_id === DRIVER_VEHICLE_ID,
+  },
+  gestor: {
+    label: 'Gestão',
+    description: 'Acompanhe indicadores, a frota e as viagens de toda a planta.',
+    Icon: MdSpaceDashboard,
+    tabs: [
+      ['Painel', MdInsights],
+      ['Mapa', MdMap],
+      ['Frota', MdDirectionsBus],
+    ],
+    map: { vehicles: true, restrictions: true, simControls: true },
+    ownsTrip: () => true,
+  },
+}
+
+// ---------- Premissas das estimativas de ESG (painel da gestão) ----------
+// São estimativas, não medições: waste e o consumo devem ser calibrados com a linha de base do piloto.
+export const ESG = {
+  // Fração da operação sem otimização (km vazios, esperas) que o despacho e o recálculo de rotas evitam.
+  waste: 0.15,
+  // Consumo (L/km) e emissão (kg de CO₂ por litro) de cada modal.
+  fuel: {
+    carro: { lPerKm: 0.1, co2PerL: 2.3 },
+    van: { lPerKm: 0.13, co2PerL: 2.7 },
+    onibus: { lPerKm: 0.35, co2PerL: 2.7 },
+    caminhao: { lPerKm: 0.4, co2PerL: 2.7 },
+  },
+}
+
 export const trafficColor = (factor) =>
   factor >= CONGESTION_WARN ? PALETTE.alert : factor >= 1.2 ? PALETTE.warn : PALETTE.cyan
 
@@ -57,3 +134,10 @@ export function fmtClock(seconds) {
   const t = Math.max(0, Math.floor(seconds))
   return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
 }
+
+const num = (value, digits) => value.toLocaleString('pt-BR', { maximumFractionDigits: digits })
+
+export const fmtDistance = (m) => (m >= 1000 ? `${num(m / 1000, 2)} km` : `${Math.round(m)} m`)
+export const fmtLiters = (l) => `${num(l, 2)} L`
+export const fmtMass = (kg) => (kg >= 1 ? `${num(kg, 2)} kg` : `${Math.round(kg * 1000)} g`)
+export const fmtPercent = (ratio) => `${Math.round(ratio * 100)}%`

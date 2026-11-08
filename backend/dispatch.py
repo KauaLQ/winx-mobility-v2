@@ -48,6 +48,7 @@ def dispatch(req: TransportRequest) -> Trip:
         phase=TripPhase.BUSCANDO,
         eta_pickup_s=pickup["estimated_time_s"],
         eta_total_s=round(pickup["estimated_time_s"] + ride["estimated_time_s"], 1),
+        distance_m=round(pickup["distance_m"] + ride["distance_m"], 1),
         created_at_s=CLOCK["s"],
     )
     TRIPS[trip.id] = trip

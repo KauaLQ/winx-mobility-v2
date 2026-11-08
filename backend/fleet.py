@@ -58,6 +58,7 @@ class TransportRequest(BaseModel):
     origin_node: int
     destination_node: int
     modal: VehicleType         # modal necessário
+    requested_by: str | None = None  # quem pediu; vira o usuário autenticado quando houver login
 
 
 class Trip(BaseModel):
@@ -67,6 +68,7 @@ class Trip(BaseModel):
     phase: TripPhase
     eta_pickup_s: float        # estimativas feitas no momento do despacho
     eta_total_s: float
+    distance_m: float          # distância estimada (até a origem + origem -> destino)
     created_at_s: float
     completed_at_s: float | None = None
     reroutes: int = 0
