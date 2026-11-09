@@ -174,16 +174,16 @@ export default function RequestPanel({ nodes, vehicles, draft, setDraft, request
         disabled={!ready || loading}
         className="rounded-xl bg-primary py-3.5 text-base font-bold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {loading ? 'Procurando veículo…' : 'Solicitar transporte'}
+        {loading ? 'Enviando pedido…' : 'Solicitar transporte'}
       </button>
 
       {result?.ok && (
         <div role="status" className="flex gap-3 rounded-xl border border-line border-l-4 border-l-wx-cyan bg-surface p-3 text-sm">
           <ResultIcon size={24} style={{ color: VEHICLE_META[result.trip.request.modal].deep }} aria-hidden />
           <div>
-            <p className="font-semibold text-ink">{result.trip.vehicle_id} está a caminho</p>
+            <p className="font-semibold text-ink">Solicitação enviada</p>
             <p className="mt-1 text-mist">
-              Chega à origem em {fmtDuration(result.trip.eta_pickup_s)}. Viagem completa em {fmtDuration(result.trip.eta_total_s)}.
+              Aguardando um motorista aceitar. O trajeto leva cerca de {fmtDuration(result.trip.eta_total_s)}.
             </p>
           </div>
         </div>

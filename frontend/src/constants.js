@@ -53,20 +53,21 @@ export const KIND_META = {
 }
 
 export const PHASE_LABEL = {
+  aguardando: 'Aguardando motorista',
   buscando: 'Indo até a origem',
   em_transporte: 'Em transporte',
   concluida: 'Concluída',
+  cancelada: 'Cancelada',
 }
 
 // ---------- Perfis de acesso ----------
-// Sem login por enquanto: o perfil é escolhido na tela inicial. Quando houver autenticação,
-// USER_ID e DRIVER_VEHICLE_ID passam a vir da sessão.
+// Sem login por enquanto: o perfil é escolhido na tela inicial e, para o motorista, o veículo na tela
+// seguinte. Quando houver autenticação, USER_ID e o veículo do motorista passam a vir da sessão.
 export const USER_ID = 'usuario-1'
-export const DRIVER_VEHICLE_ID = 'carro-1'
 
 // tabs = [rótulo, ícone] da 1ª, 2ª e 3ª aba, nessa ordem.
-// map = o que o mapa mostra e permite para o perfil.
-// ownsTrip = quais viagens aparecem no histórico do perfil.
+// map = o que o mapa mostra e permite para o perfil (os veículos exibidos são definidos no Workspace).
+// ownsTrip(trip, who) = quais viagens aparecem no histórico; who = veículo do motorista ou USER_ID.
 export const PROFILES = {
   usuario: {
     label: 'Usuário final',
@@ -77,21 +78,20 @@ export const PROFILES = {
       ['Mapa', MdMap],
       ['Histórico', MdHistory],
     ],
-    map: { vehicles: false, restrictions: false, simControls: false },
-    ownsTrip: (trip) => trip.request.requested_by === USER_ID,
+    map: { restrictions: false, simControls: false },
+    ownsTrip: (trip, who) => trip.request.requested_by === who,
   },
   motorista: {
     label: 'Motorista',
-    description: 'Veja a corrida atual, o seu turno e o trajeto no mapa.',
+    description: 'Escolha o veículo, receba corridas e siga o trajeto no mapa.',
     Icon: MdDriveEta,
-    vehicleId: DRIVER_VEHICLE_ID,
     tabs: [
       ['Turno', MdSpeed],
       ['Mapa', MdMap],
       ['Histórico', MdHistory],
     ],
-    map: { vehicles: true, restrictions: true, simControls: false },
-    ownsTrip: (trip) => trip.vehicle_id === DRIVER_VEHICLE_ID,
+    map: { restrictions: true, simControls: false },
+    ownsTrip: (trip, who) => trip.vehicle_id === who,
   },
   gestor: {
     label: 'Gestão',
@@ -102,7 +102,7 @@ export const PROFILES = {
       ['Mapa', MdMap],
       ['Frota', MdDirectionsBus],
     ],
-    map: { vehicles: true, restrictions: true, simControls: true },
+    map: { restrictions: true, simControls: true },
     ownsTrip: () => true,
   },
 }

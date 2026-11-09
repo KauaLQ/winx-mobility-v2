@@ -44,6 +44,7 @@ function Bars({ title, rows, total }) {
 
 export default function DashboardPanel({ vehicles, trips, edges }) {
   const done = trips.filter((t) => t.phase === 'concluida')
+  const accepted = trips.filter((t) => t.vehicle_id != null) // só estas têm estimativa de espera até a origem
   const sum = (list, fn) => list.reduce((s, t) => s + fn(t), 0)
   const duration = (t) => t.completed_at_s - t.created_at_s
 
@@ -64,7 +65,7 @@ export default function DashboardPanel({ vehicles, trips, edges }) {
     ['solicitações', trips.length],
     ['taxa de conclusão', trips.length ? fmtPercent(done.length / trips.length) : '—'],
     ['tempo médio de viagem', done.length ? fmtDuration(sum(done, duration) / done.length) : '—'],
-    ['espera média até a origem', trips.length ? fmtDuration(sum(trips, (t) => t.eta_pickup_s) / trips.length) : '—'],
+    ['espera média até a origem', accepted.length ? fmtDuration(sum(accepted, (t) => t.eta_pickup_s) / accepted.length) : '—'],
     ['distância percorrida', fmtDistance(sum(done, (t) => t.distance_m))],
     ['utilização da frota', vehicles.length ? fmtPercent(busy / vehicles.length) : '—'],
     ['recálculos de rota', sum(trips, (t) => t.reroutes)],

@@ -107,12 +107,13 @@ function useViewBox(home) {
 
 // ---------- Mapa ----------
 
-// showVehicles = false esconde veículos e rotas; canSeeRestrictions = false esconde as restrições das vias.
+// vehicles = só os veículos que o perfil pode ver. markers = [{ key, x, y, Icon, label, color }] (pessoa, carga, destino).
+// canSeeRestrictions = false esconde as restrições das vias.
 // Sem onPickNode, os nós não são clicáveis (só quem solicita transporte escolhe origem e destino no mapa).
 export default function PlantMap({
   graph,
-  vehicles: allVehicles,
-  showVehicles = true,
+  vehicles,
+  markers = [],
   canSeeRestrictions = true,
   draft,
   selectedId,
@@ -123,7 +124,6 @@ export default function PlantMap({
 
   const nodes = useMemo(() => graph?.nodes ?? [], [graph])
   const nodesById = useMemo(() => Object.fromEntries(nodes.map((n) => [n.id, n])), [nodes])
-  const vehicles = useMemo(() => (showVehicles ? allVehicles : []), [showVehicles, allVehicles])
 
   const home = useMemo(() => {
     if (!nodes.length) return null
@@ -312,6 +312,18 @@ export default function PlantMap({
             </g>
           )
         })}
+
+        {/* Marcadores de pessoa, carga ou destino: ficam ao lado do nó, sem cobri-lo */}
+        {markers.map((m) => (
+          <g key={m.key} transform={`translate(${m.x + 26} ${m.y - 26})`} className="pointer-events-none">
+            <circle r="17" fill={m.color} opacity="0.3" className="animate-ping" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+            <circle r="13" fill={m.color} stroke={C.surface} strokeWidth="2" />
+            <m.Icon size={16} x={-8} y={-8} style={{ color: C.surface }} />
+            <text y="-22" textAnchor="middle" fontSize="12" fontWeight="700" fill={C.ink} stroke={C.page} strokeWidth="4" paintOrder="stroke">
+              {m.label}
+            </text>
+          </g>
+        ))}
 
         {/* Veículos: o CSS transition entre leituras do backend deixa o movimento contínuo */}
         {placed.map(({ v, x, y }) => {

@@ -15,9 +15,11 @@ class RequestKind(str, Enum):
 
 
 class TripPhase(str, Enum):
+    AGUARDANDO = "aguardando"        # pedido feito, esperando um motorista aceitar
     BUSCANDO = "buscando"            # indo até a origem do pedido
     EM_TRANSPORTE = "em_transporte"  # origem -> destino
     CONCLUIDA = "concluida"
+    CANCELADA = "cancelada"          # o solicitante desistiu antes de alguém aceitar
 
 
 # Restrição de carga por padrão: o que cada modal pode transportar.
@@ -64,12 +66,15 @@ class TransportRequest(BaseModel):
 class Trip(BaseModel):
     id: str
     request: TransportRequest
-    vehicle_id: str
     phase: TripPhase
-    eta_pickup_s: float        # estimativas feitas no momento do despacho
+    # Enquanto AGUARDANDO: estimativas só do trajeto origem -> destino (eta_pickup_s = 0).
+    # Ao ser aceita, passam a incluir o deslocamento até a origem.
+    eta_pickup_s: float
     eta_total_s: float
-    distance_m: float          # distância estimada (até a origem + origem -> destino)
+    distance_m: float
     created_at_s: float
+    vehicle_id: str | None = None      # None até um motorista aceitar
+    offers: dict[str, float] = {}      # veículos que receberam o pedido -> tempo até a origem (s)
     completed_at_s: float | None = None
     reroutes: int = 0
 

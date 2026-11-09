@@ -2,12 +2,13 @@
 
 Os endpoints que alteram estado são `async def` de propósito: sem `await` dentro deles,
 cada chamada roda inteira no event loop, sem disputar o estado com o loop de simulação
-(dispensa locks no MVP).
+(dispensa locks no MVP). Isso também garante que, se dois motoristas aceitarem a mesma
+corrida, só o primeiro leva.
 """
 from fastapi import APIRouter, HTTPException, Query
 
 import simulation
-from dispatch import dispatch
+from dispatch import accept, cancel, dispatch
 from fleet import (
     CLOCK, FLEET, TRIPS, SimulationState, TickResult, TransportRequest, Trip,
     Vehicle, VehicleCreate, add_vehicle, reset_world,
@@ -51,6 +52,28 @@ async def post_dispatch(body: TransportRequest):
     except ValueError as e:      # pedido inválido ou impossível para o modal
         raise HTTPException(422, str(e))
     except LookupError as e:     # nenhum veículo elegível livre agora
+        raise HTTPException(409, str(e))
+
+
+@router.post("/trips/{trip_id}/accept", response_model=Trip)
+async def post_accept(trip_id: str, vehicle_id: str = Query(..., description="veículo que aceita a corrida")):
+    if trip_id not in TRIPS:
+        raise HTTPException(404, f"Viagem '{trip_id}' não existe")
+    if vehicle_id not in FLEET:
+        raise HTTPException(404, f"Veículo '{vehicle_id}' não existe")
+    try:
+        return accept(trip_id, vehicle_id)
+    except LookupError as e:     # outro veículo foi mais rápido, ou a corrida foi cancelada
+        raise HTTPException(409, str(e))
+
+
+@router.post("/trips/{trip_id}/cancel", response_model=Trip)
+async def post_cancel(trip_id: str):
+    if trip_id not in TRIPS:
+        raise HTTPException(404, f"Viagem '{trip_id}' não existe")
+    try:
+        return cancel(trip_id)
+    except LookupError as e:     # já foi aceita
         raise HTTPException(409, str(e))
 
 

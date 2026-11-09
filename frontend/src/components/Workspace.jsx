@@ -1,20 +1,26 @@
 import { useMemo, useState } from 'react'
-import { PROFILES, USER_ID } from '../constants'
+import { MdFlag, MdPersonPinCircle } from 'react-icons/md'
+import { api } from '../api'
+import { KIND_META, PALETTE, PROFILES, USER_ID } from '../constants'
 import { useLiveData } from '../hooks/useLiveData'
 import DashboardPanel from './DashboardPanel'
 import DriverPanel from './DriverPanel'
 import FleetPanel from './FleetPanel'
 import Header from './Header'
 import HistoryPanel from './HistoryPanel'
+import OfferModal from './OfferModal'
 import PlantMap from './PlantMap'
 import RequestPanel from './RequestPanel'
 import SimControls from './SimControls'
 import StatsStrip from './StatsStrip'
+import TripStatusModal from './TripStatusModal'
 
 const TAB_IDS = ['home', 'map', 'list']
 const EMPTY_DRAFT = { origin: null, destination: null }
+const ACTIVE_PHASES = ['aguardando', 'buscando', 'em_transporte']
 
-export default function Workspace({ profileId, onExit }) {
+// vehicleId: veículo escolhido no "login" do motorista (undefined nos outros perfis).
+export default function Workspace({ profileId, vehicleId, onExit }) {
   const profile = PROFILES[profileId]
   const tabs = profile.tabs.map(([label, Icon], i) => [TAB_IDS[i], label, Icon])
 
@@ -22,14 +28,48 @@ export default function Workspace({ profileId, onExit }) {
   const [view, setView] = useState('map') // aba ativa
   const [speed, setSpeed] = useState(5)
   const [draft, setDraft] = useState(EMPTY_DRAFT)
-  const [selectedId, setSelectedId] = useState(profile.vehicleId ?? null) // o motorista já abre com o seu veículo
+  const [selectedId, setSelectedId] = useState(vehicleId ?? null) // o motorista já abre com o seu veículo
+  const [tripModalOpen, setTripModalOpen] = useState(false) // usuário: modal de busca/aceite da viagem
+  const [dismissed, setDismissed] = useState([]) // motorista: ofertas recusadas
+  const [accepting, setAccepting] = useState(false)
 
   const nodes = useMemo(() => graph?.nodes ?? [], [graph])
   const nodesById = useMemo(() => Object.fromEntries(nodes.map((n) => [n.id, n])), [nodes])
   const edges = graph?.edges ?? []
   const vehicles = sim?.vehicles ?? []
   const trips = sim?.trips ?? []
-  const myTrips = trips.filter(profile.ownsTrip)
+  const myTrips = trips.filter((t) => profile.ownsTrip(t, vehicleId ?? USER_ID))
+  const myVehicle = vehicles.find((v) => v.id === vehicleId)
+
+  // Usuário: a viagem em andamento mais recente. Motorista: a viagem do veículo escolhido.
+  const activeTrip = profileId === 'usuario' ? [...myTrips].reverse().find((t) => ACTIVE_PHASES.includes(t.phase)) : null
+  const focusTrip = profileId === 'motorista' ? trips.find((t) => t.id === myVehicle?.trip_id) : activeTrip
+
+  // Motorista: primeira oferta que chegou para o seu veículo, enquanto ele estiver livre.
+  const offer =
+    profileId === 'motorista' && myVehicle?.status === 'disponivel'
+      ? trips.find((t) => t.phase === 'aguardando' && vehicleId in t.offers && !dismissed.includes(t.id))
+      : null
+
+  // Motorista vê só o próprio veículo; o usuário, só o veículo que aceitou a sua viagem.
+  let mapVehicles = vehicles
+  if (profileId === 'motorista') mapVehicles = vehicles.filter((v) => v.id === vehicleId)
+  if (profileId === 'usuario') mapVehicles = vehicles.filter((v) => v.id === activeTrip?.vehicle_id)
+
+  // Marcador do ponto da fase atual: a origem enquanto o veículo busca, o destino depois.
+  const markers = []
+  const toDestination = focusTrip?.phase === 'em_transporte'
+  const stop = focusTrip && nodesById[toDestination ? focusTrip.request.destination_node : focusTrip.request.origin_node]
+  if (stop) {
+    const mark =
+      profileId === 'usuario'
+        ? { Icon: toDestination ? MdFlag : MdPersonPinCircle, label: toDestination ? 'Destino' : 'Você' }
+        : {
+            Icon: KIND_META[focusTrip.request.kind].Icon,
+            label: toDestination ? 'Destino' : focusTrip.request.kind === 'passageiro' ? 'Embarque' : 'Coleta',
+          }
+    markers.push({ key: focusTrip.id, x: stop.x, y: stop.y, color: PALETTE.violetDeep, ...mark })
+  }
 
   // Toque nos nós do mapa: primeiro define a origem, depois o destino; um novo toque recomeça.
   const pickNode = (id) =>
@@ -39,16 +79,40 @@ export default function Workspace({ profileId, onExit }) {
       return { origin: id, destination: null }
     })
 
-  const onDispatched = (trip) => {
-    setSelectedId(trip.vehicle_id)
+  const onDispatched = () => {
+    setTripModalOpen(true)
     setDraft(EMPTY_DRAFT)
     setView('map')
     refresh()
   }
 
   const onReset = () => {
-    setSelectedId(profile.vehicleId ?? null)
+    setSelectedId(vehicleId ?? null)
     setDraft(EMPTY_DRAFT)
+  }
+
+  const acceptOffer = async (trip) => {
+    setAccepting(true)
+    try {
+      await api.acceptTrip(trip.id, vehicleId)
+      setView('map')
+    } catch {
+      // Outro veículo foi mais rápido (ou a corrida foi cancelada): a oferta some.
+      setDismissed((d) => [...d, trip.id])
+    } finally {
+      setAccepting(false)
+      refresh()
+    }
+  }
+
+  const cancelTrip = async (trip) => {
+    try {
+      await api.cancelTrip(trip.id)
+    } catch {
+      /* já foi aceita: o modal passa a mostrar o veículo */
+    } finally {
+      refresh()
+    }
   }
 
   // As três abas ficam montadas e empilhadas: a ativa aparece com fade e um leve deslizar,
@@ -80,22 +144,15 @@ export default function Workspace({ profileId, onExit }) {
               onDispatched={onDispatched}
             />
           )}
-          {profileId === 'motorista' && (
-            <DriverPanel
-              vehicle={vehicles.find((v) => v.id === profile.vehicleId)}
-              trips={myTrips}
-              edges={edges}
-              nodesById={nodesById}
-            />
-          )}
+          {profileId === 'motorista' && <DriverPanel vehicle={myVehicle} trips={myTrips} edges={edges} nodesById={nodesById} />}
           {profileId === 'gestor' && <DashboardPanel vehicles={vehicles} trips={trips} edges={edges} />}
         </aside>
 
         <section inert={view !== 'map'} className={panel('map')}>
           <PlantMap
             graph={graph}
-            vehicles={vehicles}
-            showVehicles={profile.map.vehicles}
+            vehicles={mapVehicles}
+            markers={markers}
             canSeeRestrictions={profile.map.restrictions}
             draft={draft}
             selectedId={selectedId}
@@ -107,6 +164,9 @@ export default function Workspace({ profileId, onExit }) {
               <SimControls running={sim?.running ?? false} speed={speed} setSpeed={setSpeed} onChanged={refresh} onReset={onReset} />
             </div>
           )}
+          {profileId === 'usuario' && tripModalOpen && activeTrip && (
+            <TripStatusModal trip={activeTrip} onCancel={() => cancelTrip(activeTrip)} onClose={() => setTripModalOpen(false)} />
+          )}
         </section>
 
         <aside inert={view !== 'list'} className={`${panel('list')} scroll-thin overflow-y-auto`}>
@@ -116,6 +176,18 @@ export default function Workspace({ profileId, onExit }) {
             <HistoryPanel trips={myTrips} nodesById={nodesById} showVehicle={profileId === 'usuario'} />
           )}
         </aside>
+
+        {/* A oferta de corrida aparece por cima de qualquer aba do motorista */}
+        {offer && (
+          <OfferModal
+            trip={offer}
+            vehicleId={vehicleId}
+            nodesById={nodesById}
+            busy={accepting}
+            onAccept={() => acceptOffer(offer)}
+            onDecline={() => setDismissed((d) => [...d, offer.id])}
+          />
+        )}
       </main>
 
       <nav className="relative grid grid-cols-3 border-t border-white/10 bg-navy-deep pb-[env(safe-area-inset-bottom)]" aria-label="Seções">

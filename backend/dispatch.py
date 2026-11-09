@@ -1,13 +1,18 @@
-"""Matching: escolhe o veículo disponível mais próximo (menor tempo de rota) para um pedido."""
+"""Despacho em duas etapas: o pedido é oferecido aos veículos elegíveis e o primeiro a aceitar leva a corrida."""
 import networkx as nx
 
 from fleet import CLOCK, FLEET, TRIPS, TransportRequest, Trip, TripPhase, VehicleStatus
 from graph_model import FACTORY_GRAPH as G
 from graph_model import find_route
 
+MAX_PICKUP_S = 180  # só recebem o pedido os veículos a até 3 min (com o tráfego de agora) da origem
+
 
 def dispatch(req: TransportRequest) -> Trip:
-    """Levanta ValueError (pedido inválido/impossível) ou LookupError (sem veículo agora)."""
+    """Cria o pedido (AGUARDANDO) e o oferece aos veículos elegíveis.
+
+    Levanta ValueError (pedido inválido/impossível) ou LookupError (nenhum veículo elegível agora).
+    """
     for node in (req.origin_node, req.destination_node):
         if node not in G:
             raise ValueError(f"Nó {node} não existe")
@@ -18,43 +23,66 @@ def dispatch(req: TransportRequest) -> Trip:
     except nx.NetworkXNoPath:
         raise ValueError(f"O modal '{req.modal.value}' não tem rota da origem ao destino")
 
-    # 2) candidatos: disponíveis, do modal pedido e autorizados para esse tipo de pedido
-    candidates = [
-        v for v in FLEET.values()
-        if v.status == VehicleStatus.DISPONIVEL
-        and v.type == req.modal
-        and req.kind in v.allowed_kinds
-    ]
-
-    # 3) o mais próximo = menor tempo de rota (com o tráfego de agora) até a origem
-    best = None
-    for v in candidates:
+    # 2) elegíveis: disponíveis, do modal pedido, autorizados para esse tipo de pedido e próximos da origem
+    offers: dict[str, float] = {}
+    for v in FLEET.values():
+        if v.status != VehicleStatus.DISPONIVEL or v.type != req.modal or req.kind not in v.allowed_kinds:
+            continue
         try:
             pickup = find_route(G, v.current_node, req.origin_node, v.type)
         except nx.NetworkXNoPath:
             continue
-        if best is None or pickup["estimated_time_s"] < best[1]["estimated_time_s"]:
-            best = (v, pickup)
-    if best is None:
+        if pickup["estimated_time_s"] <= MAX_PICKUP_S:
+            offers[v.id] = pickup["estimated_time_s"]
+    if not offers:
         raise LookupError(
             f"Nenhum veículo '{req.modal.value}' disponível para '{req.kind.value}' no momento"
         )
 
-    vehicle, pickup = best
     trip = Trip(
         id=f"trip-{len(TRIPS) + 1}",
         request=req,
-        vehicle_id=vehicle.id,
-        phase=TripPhase.BUSCANDO,
-        eta_pickup_s=pickup["estimated_time_s"],
-        eta_total_s=round(pickup["estimated_time_s"] + ride["estimated_time_s"], 1),
-        distance_m=round(pickup["distance_m"] + ride["distance_m"], 1),
+        phase=TripPhase.AGUARDANDO,
+        eta_pickup_s=0.0,
+        eta_total_s=ride["estimated_time_s"],
+        distance_m=ride["distance_m"],
         created_at_s=CLOCK["s"],
+        offers=offers,
     )
     TRIPS[trip.id] = trip
+    return trip
+
+
+def accept(trip_id: str, vehicle_id: str) -> Trip:
+    """O veículo aceita a corrida. Levanta LookupError se ela não está mais disponível para ele."""
+    trip, vehicle = TRIPS[trip_id], FLEET[vehicle_id]
+    if trip.phase != TripPhase.AGUARDANDO:
+        raise LookupError("Essa corrida já foi aceita por outro veículo ou foi cancelada")
+    if vehicle_id not in trip.offers or vehicle.status != VehicleStatus.DISPONIVEL:
+        raise LookupError("Esse veículo não pode aceitar a corrida agora")
+
+    try:
+        pickup = find_route(G, vehicle.current_node, trip.request.origin_node, vehicle.type)
+    except nx.NetworkXNoPath:
+        raise LookupError("Sem rota até a origem da corrida")
+
+    trip.vehicle_id = vehicle_id
+    trip.phase = TripPhase.BUSCANDO
+    trip.eta_pickup_s = pickup["estimated_time_s"]
+    trip.eta_total_s = round(pickup["estimated_time_s"] + trip.eta_total_s, 1)
+    trip.distance_m = round(pickup["distance_m"] + trip.distance_m, 1)
 
     vehicle.status = VehicleStatus.EM_CORRIDA
     vehicle.trip_id = trip.id
     vehicle.route = pickup["nodes"]
     vehicle.edge_remaining_s = None
+    return trip
+
+
+def cancel(trip_id: str) -> Trip:
+    """Cancela um pedido que ninguém aceitou ainda. Levanta LookupError nos demais casos."""
+    trip = TRIPS[trip_id]
+    if trip.phase != TripPhase.AGUARDANDO:
+        raise LookupError("Só é possível cancelar enquanto nenhum motorista aceitou")
+    trip.phase = TripPhase.CANCELADA
     return trip

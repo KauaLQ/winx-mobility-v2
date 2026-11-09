@@ -11,7 +11,11 @@ const body = (request) => request.then((res) => res.data)
 export const api = {
   graph: () => body(http.get('/map/graph')),
   state: () => body(http.get('/simulation/state')),
+  vehicles: () => body(http.get('/vehicles')),
   dispatch: (payload) => body(http.post('/dispatch', payload)),
+  acceptTrip: (tripId, vehicleId) =>
+    body(http.post(`/trips/${tripId}/accept`, null, { params: { vehicle_id: vehicleId } })),
+  cancelTrip: (tripId) => body(http.post(`/trips/${tripId}/cancel`)),
   // speed = segundos simulados por segundo real (1x, 5x, 10x).
   startSim: (speed) =>
     body(

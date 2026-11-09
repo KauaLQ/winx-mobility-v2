@@ -1,5 +1,10 @@
 import { KIND_META, PHASE_LABEL, fmtClock, fmtDistance, fmtDuration } from '../constants'
 
+const PILL = {
+  concluida: 'bg-wx-cyan/15 text-wx-cyan-deep',
+  cancelada: 'bg-tint text-mist',
+}
+
 // `trips` já chega filtrado para o perfil. A API devolve em ordem de criação; aqui a mais recente vem primeiro.
 export default function HistoryPanel({ trips, nodesById, showVehicle }) {
   const name = (id) => nodesById[id]?.name ?? `Nó ${id}`
@@ -21,6 +26,7 @@ export default function HistoryPanel({ trips, nodesById, showVehicle }) {
         {list.map((t) => {
           const kind = KIND_META[t.request.kind]
           const finished = t.phase === 'concluida'
+          const accepted = t.vehicle_id != null
           return (
             <li key={t.id} className="rounded-xl border border-line bg-surface p-3">
               <div className="flex items-center justify-between gap-2">
@@ -28,11 +34,7 @@ export default function HistoryPanel({ trips, nodesById, showVehicle }) {
                   <kind.Icon size={18} aria-hidden />
                   {kind.label}
                 </span>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    finished ? 'bg-wx-cyan/15 text-wx-cyan-deep' : 'bg-wx-violet/15 text-wx-violet-deep'
-                  }`}
-                >
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${PILL[t.phase] ?? 'bg-wx-violet/15 text-wx-violet-deep'}`}>
                   {PHASE_LABEL[t.phase]}
                 </span>
               </div>
@@ -41,9 +43,9 @@ export default function HistoryPanel({ trips, nodesById, showVehicle }) {
               </p>
               <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-mist">
                 <span>Pedida às {fmtClock(t.created_at_s)}</span>
-                {showVehicle && <span>{t.vehicle_id}</span>}
-                <span>{finished ? `Duração ${fmtDuration(t.completed_at_s - t.created_at_s)}` : `Previsão ${fmtDuration(t.eta_total_s)}`}</span>
-                <span>{fmtDistance(t.distance_m)}</span>
+                {showVehicle && accepted && <span>{t.vehicle_id}</span>}
+                {accepted && <span>{finished ? `Duração ${fmtDuration(t.completed_at_s - t.created_at_s)}` : `Previsão ${fmtDuration(t.eta_total_s)}`}</span>}
+                {accepted && <span>{fmtDistance(t.distance_m)}</span>}
                 {t.reroutes > 0 && (
                   <span className="font-medium text-warn-deep">
                     {t.reroutes} {t.reroutes > 1 ? 'recálculos' : 'recálculo'} de rota
