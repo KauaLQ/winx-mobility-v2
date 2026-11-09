@@ -24,7 +24,7 @@ export default function VehicleSelect({ onSelect, onBack }) {
   const list = [...(vehicles ?? [])].sort((a, b) => a.id.localeCompare(b.id))
 
   return (
-    <div className="scroll-thin flex h-full flex-col overflow-y-auto">
+    <div className="scroll-thin flex min-h-0 flex-1 flex-col overflow-y-auto">
       <header className="flex items-center gap-3 bg-linear-to-b from-navy to-navy-deep px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white">
         <button
           type="button"

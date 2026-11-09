@@ -64,13 +64,78 @@
   }
 }
 
+/* Variáveis que também mudam com o perfil (as demais cores vêm do @theme acima). */
+:root {
+  --map-casing: #dde3f3; /* faixa larga das vias no mapa */
+  --backdrop-base: #e6eaf5; /* fundo fora do app */
+  --backdrop-from: #eef1f9;
+  --backdrop-to: #dde3f3;
+}
+
+/* Paletas por perfil: o App define data-profile. Usuário final e página inicial usam o tema padrão. */
+[data-profile='motorista'] {
+  /* azul mais intenso */
+  --color-page: #f1f4ff;
+  --color-tint: #e6ecff;
+  --color-line: #d6e0fb;
+  --color-ink: #14204d;
+  --color-mist: #566799;
+  --color-navy: #2c52d9;
+  --color-navy-deep: #1c38b0;
+  --color-navy-soft: #c2cffc;
+  --color-primary: #2c4fd0;
+  --color-primary-hover: #2441b3;
+  --map-casing: #d0dcfa;
+  --backdrop-base: #e2e8fb;
+  --backdrop-from: #ebf0ff;
+  --backdrop-to: #d3defa;
+}
+
+[data-profile='gestor'] {
+  /* azul acinzentado */
+  --color-page: #f4f6f9;
+  --color-tint: #eceff4;
+  --color-line: #dfe4eb;
+  --color-ink: #202a38;
+  --color-mist: #677284;
+  --color-navy: #4d6079;
+  --color-navy-deep: #3b4b62;
+  --color-navy-soft: #c5cfdd;
+  --color-primary: #4f6485;
+  --color-primary-hover: #435577;
+  --map-casing: #dce1e9;
+  --backdrop-base: #e5e9ee;
+  --backdrop-from: #eef1f5;
+  --backdrop-to: #d9dfe7;
+}
+
 /* Fundo fora do app: grade pontilhada discreta e uniforme (estilo caderno) */
 .starfield {
-  background-color: #e6eaf5;
-  background-image: 
+  background-color: var(--backdrop-base);
+  background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='1' fill='%236c82e6' fill-opacity='0.35'/%3E%3C/svg%3E"),
-    linear-gradient(160deg, #eef1f9 0%, #dde3f3 100%);
+    linear-gradient(160deg, var(--backdrop-from) 0%, var(--backdrop-to) 100%);
   background-size: 24px 24px, 100% 100%;
+}
+
+/* Troca de página: a nova tela entra com fade e um leve deslizar (mesmo ritmo das abas). */
+@keyframes page-forward {
+  from {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+}
+@keyframes page-back {
+  from {
+    opacity: 0;
+    transform: translateX(-1rem);
+  }
+}
+.page-forward {
+  animation: page-forward 300ms ease-out backwards;
+}
+.page-back {
+  animation: page-back 300ms ease-out backwards;
 }
 
 /* Rotas ativas no mapa: o tracejado "corre" na direção do destino. */

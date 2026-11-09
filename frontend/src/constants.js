@@ -20,14 +20,15 @@ export const TICK_MS = 500
 export const CONGESTION_WARN = 1.5
 
 // Mesmas cores do @theme em index.css, para uso em SVG e estilos inline.
+// As que mudam com o perfil (page, line, casing, ink, mist) apontam para as variáveis CSS.
 export const PALETTE = {
-  page: '#f3f5fb',
+  page: 'var(--color-page)',
   surface: '#ffffff',
   tint: '#edf0f9',
-  line: '#e1e6f1',
-  casing: '#dde3f3', // faixa larga das vias
-  ink: '#1f2a44',
-  mist: '#66718d',
+  line: 'var(--color-line)',
+  casing: 'var(--map-casing)', // faixa larga das vias
+  ink: 'var(--color-ink)',
+  mist: 'var(--color-mist)',
   cyan: '#3fb4cc',
   cyanDeep: '#1d8199',
   cobalt: '#6c82e6',
