@@ -13,11 +13,13 @@ import PlantMap from './PlantMap'
 import RequestPanel from './RequestPanel'
 import SimControls from './SimControls'
 import StatsStrip from './StatsStrip'
+import TripDoneModal from './TripDoneModal'
 import TripStatusModal from './TripStatusModal'
 
 const TAB_IDS = ['home', 'map', 'list']
 const EMPTY_DRAFT = { origin: null, destination: null }
 const ACTIVE_PHASES = ['aguardando', 'buscando', 'em_transporte']
+const doneKey = (trip) => `${trip.id}:${trip.completed_at_s}` // o tempo evita confundir ids reaproveitados após um reset
 
 // vehicleId: veículo escolhido no "login" do motorista (undefined nos outros perfis).
 export default function Workspace({ profileId, vehicleId, onExit }) {
@@ -27,11 +29,13 @@ export default function Workspace({ profileId, vehicleId, onExit }) {
   const { graph, sim, online, refresh } = useLiveData()
   const [view, setView] = useState('map') // aba ativa
   const [speed, setSpeed] = useState(5)
-  const [draft, setDraft] = useState(EMPTY_DRAFT)
+  const [destination, setDestination] = useState(null) // usuário: destino do próximo pedido
+  const [startSeed] = useState(() => Math.random()) // usuário: sorteia o ponto inicial (no lugar do GPS)
   const [selectedId, setSelectedId] = useState(vehicleId ?? null) // o motorista já abre com o seu veículo
   const [tripModalOpen, setTripModalOpen] = useState(false) // usuário: modal de busca/aceite da viagem
   const [dismissed, setDismissed] = useState([]) // motorista: ofertas recusadas
   const [accepting, setAccepting] = useState(false)
+  const [seenDone, setSeenDone] = useState(null) // viagens concluídas que já eram conhecidas ou já foram comemoradas
 
   const nodes = useMemo(() => graph?.nodes ?? [], [graph])
   const nodesById = useMemo(() => Object.fromEntries(nodes.map((n) => [n.id, n])), [nodes])
@@ -40,6 +44,19 @@ export default function Workspace({ profileId, vehicleId, onExit }) {
   const trips = sim?.trips ?? []
   const myTrips = trips.filter((t) => profile.ownsTrip(t, vehicleId ?? USER_ID))
   const myVehicle = vehicles.find((v) => v.id === vehicleId)
+
+  // Na primeira leitura, as concluídas existentes não geram modal: só as que terminarem a partir daqui.
+  if (sim && seenDone === null) setSeenDone(trips.filter((t) => t.phase === 'concluida').map(doneKey))
+  const finishedTrip =
+    profileId !== 'gestor' && seenDone
+      ? myTrips.find((t) => t.phase === 'concluida' && !seenDone.includes(doneKey(t)))
+      : null
+
+  // Usuário: localização atual. Começa num ponto sorteado e, depois de cada viagem, passa a ser o destino dela.
+  const lastDone = [...myTrips].reverse().find((t) => t.phase === 'concluida')
+  const startNode = nodes[Math.floor(startSeed * nodes.length)]
+  const userNodeId = profileId !== 'usuario' ? null : (lastDone?.request.destination_node ?? startNode?.id ?? null)
+  const draft = profileId === 'usuario' ? { origin: userNodeId, destination } : EMPTY_DRAFT
 
   // Usuário: a viagem em andamento mais recente. Motorista: a viagem do veículo escolhido.
   const activeTrip = profileId === 'usuario' ? [...myTrips].reverse().find((t) => ACTIVE_PHASES.includes(t.phase)) : null
@@ -57,6 +74,7 @@ export default function Workspace({ profileId, vehicleId, onExit }) {
   if (profileId === 'usuario') mapVehicles = vehicles.filter((v) => v.id === activeTrip?.vehicle_id)
 
   // Marcador do ponto da fase atual: a origem enquanto o veículo busca, o destino depois.
+  // O usuário, sem viagem em andamento, aparece na sua localização atual.
   const markers = []
   const toDestination = focusTrip?.phase === 'em_transporte'
   const stop = focusTrip && nodesById[toDestination ? focusTrip.request.destination_node : focusTrip.request.origin_node]
@@ -69,27 +87,24 @@ export default function Workspace({ profileId, vehicleId, onExit }) {
             label: toDestination ? 'Destino' : focusTrip.request.kind === 'passageiro' ? 'Embarque' : 'Coleta',
           }
     markers.push({ key: focusTrip.id, x: stop.x, y: stop.y, color: PALETTE.violetDeep, ...mark })
+  } else if (nodesById[userNodeId]) {
+    const here = nodesById[userNodeId]
+    markers.push({ key: 'me', x: here.x, y: here.y, color: PALETTE.violetDeep, Icon: MdPersonPinCircle, label: 'Você' })
   }
 
-  // Toque nos nós do mapa: primeiro define a origem, depois o destino; um novo toque recomeça.
-  const pickNode = (id) =>
-    setDraft(({ origin, destination }) => {
-      if (origin == null) return { origin: id, destination }
-      if (destination == null && id !== origin) return { origin, destination: id }
-      return { origin: id, destination: null }
-    })
+  // Toque nos pontos do mapa escolhe o destino (a origem é sempre a localização atual).
+  const pickNode = (id) => {
+    if (id !== userNodeId) setDestination(id)
+  }
 
   const onDispatched = () => {
     setTripModalOpen(true)
-    setDraft(EMPTY_DRAFT)
+    setDestination(null)
     setView('map')
     refresh()
   }
 
-  const onReset = () => {
-    setSelectedId(vehicleId ?? null)
-    setDraft(EMPTY_DRAFT)
-  }
+  const onReset = () => setSelectedId(vehicleId ?? null)
 
   const acceptOffer = async (trip) => {
     setAccepting(true)
@@ -115,6 +130,11 @@ export default function Workspace({ profileId, vehicleId, onExit }) {
     }
   }
 
+  const closeDone = () => {
+    setSeenDone((seen) => [...seen, doneKey(finishedTrip)])
+    refresh() // traz a avaliação enviada para o histórico
+  }
+
   // As três abas ficam montadas e empilhadas: a ativa aparece com fade e um leve deslizar,
   // as outras somem para o lado de onde "vieram". Assim o mapa mantém zoom e posição ao trocar de aba.
   const activeIndex = tabs.findIndex(([id]) => id === view)
@@ -138,8 +158,9 @@ export default function Workspace({ profileId, vehicleId, onExit }) {
             <RequestPanel
               nodes={nodes}
               vehicles={vehicles}
-              draft={draft}
-              setDraft={setDraft}
+              origin={userNodeId}
+              destination={destination}
+              setDestination={setDestination}
               requesterId={USER_ID}
               onDispatched={onDispatched}
             />
@@ -187,6 +208,11 @@ export default function Workspace({ profileId, vehicleId, onExit }) {
             onAccept={() => acceptOffer(offer)}
             onDecline={() => setDismissed((d) => [...d, offer.id])}
           />
+        )}
+
+        {/* Conclusão da viagem: motorista e usuário, em qualquer aba */}
+        {finishedTrip && (
+          <TripDoneModal key={doneKey(finishedTrip)} trip={finishedTrip} nodesById={nodesById} role={profileId} onClose={closeDone} />
         )}
       </main>
 

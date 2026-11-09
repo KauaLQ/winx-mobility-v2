@@ -16,6 +16,7 @@ export const api = {
   acceptTrip: (tripId, vehicleId) =>
     body(http.post(`/trips/${tripId}/accept`, null, { params: { vehicle_id: vehicleId } })),
   cancelTrip: (tripId) => body(http.post(`/trips/${tripId}/cancel`)),
+  reviewTrip: (tripId, payload) => body(http.post(`/trips/${tripId}/review`, payload)),
   // speed = segundos simulados por segundo real (1x, 5x, 10x).
   startSim: (speed) =>
     body(

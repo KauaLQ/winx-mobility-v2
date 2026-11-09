@@ -86,3 +86,15 @@ def cancel(trip_id: str) -> Trip:
         raise LookupError("Só é possível cancelar enquanto nenhum motorista aceitou")
     trip.phase = TripPhase.CANCELADA
     return trip
+
+
+def review(trip_id: str, rating: int, comment: str | None) -> Trip:
+    """Registra a avaliação de uma viagem concluída. Levanta LookupError se não for possível."""
+    trip = TRIPS[trip_id]
+    if trip.phase != TripPhase.CONCLUIDA:
+        raise LookupError("Só é possível avaliar uma viagem concluída")
+    if trip.rating is not None:
+        raise LookupError("Essa viagem já foi avaliada")
+    trip.rating = rating
+    trip.comment = comment or None
+    return trip

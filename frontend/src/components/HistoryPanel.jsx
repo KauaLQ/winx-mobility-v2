@@ -46,6 +46,7 @@ export default function HistoryPanel({ trips, nodesById, showVehicle }) {
                 {showVehicle && accepted && <span>{t.vehicle_id}</span>}
                 {accepted && <span>{finished ? `Duração ${fmtDuration(t.completed_at_s - t.created_at_s)}` : `Previsão ${fmtDuration(t.eta_total_s)}`}</span>}
                 {accepted && <span>{fmtDistance(t.distance_m)}</span>}
+                {t.rating != null && <span>★ {t.rating}</span>}
                 {t.reroutes > 0 && (
                   <span className="font-medium text-warn-deep">
                     {t.reroutes} {t.reroutes > 1 ? 'recálculos' : 'recálculo'} de rota

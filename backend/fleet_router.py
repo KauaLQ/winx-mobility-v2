@@ -8,9 +8,9 @@ corrida, só o primeiro leva.
 from fastapi import APIRouter, HTTPException, Query
 
 import simulation
-from dispatch import accept, cancel, dispatch
+from dispatch import accept, cancel, dispatch, review
 from fleet import (
-    CLOCK, FLEET, TRIPS, SimulationState, TickResult, TransportRequest, Trip,
+    CLOCK, FLEET, TRIPS, SimulationState, TickResult, TransportRequest, Trip, TripReview,
     Vehicle, VehicleCreate, add_vehicle, reset_world,
 )
 from graph_model import FACTORY_GRAPH
@@ -74,6 +74,16 @@ async def post_cancel(trip_id: str):
     try:
         return cancel(trip_id)
     except LookupError as e:     # já foi aceita
+        raise HTTPException(409, str(e))
+
+
+@router.post("/trips/{trip_id}/review", response_model=Trip)
+async def post_review(trip_id: str, body: TripReview):
+    if trip_id not in TRIPS:
+        raise HTTPException(404, f"Viagem '{trip_id}' não existe")
+    try:
+        return review(trip_id, body.rating, body.comment)
+    except LookupError as e:     # viagem não concluída ou já avaliada
         raise HTTPException(409, str(e))
 
 

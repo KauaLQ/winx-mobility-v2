@@ -1,6 +1,6 @@
 """Modelos e estado em memória: frota, pedidos e viagens."""
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from graph_model import FACTORY_GRAPH, VehicleType
 
 
@@ -77,6 +77,13 @@ class Trip(BaseModel):
     offers: dict[str, float] = {}      # veículos que receberam o pedido -> tempo até a origem (s)
     completed_at_s: float | None = None
     reroutes: int = 0
+    rating: int | None = None      # avaliação opcional do solicitante (1 a 5)
+    comment: str | None = None
+
+
+class TripReview(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str | None = Field(default=None, max_length=280)
 
 
 class TickResult(BaseModel):

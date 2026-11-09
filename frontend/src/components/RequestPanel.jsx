@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
-import { MdKeyboardArrowDown, MdSwapVert } from 'react-icons/md'
+import { MdKeyboardArrowDown, MdMyLocation } from 'react-icons/md'
 import { api, errorMessage } from '../api'
 import { KIND_META, VEHICLE_META, fmtDuration } from '../constants'
 
 const field =
   'w-full appearance-none rounded-xl border border-line bg-surface px-3 py-3 pr-10 text-base text-ink transition-colors focus:border-primary'
 
-export default function RequestPanel({ nodes, vehicles, draft, setDraft, requesterId, onDispatched }) {
+// A origem é sempre a localização atual do usuário (`origin`); só o destino é escolhido.
+export default function RequestPanel({ nodes, vehicles, origin, destination, setDestination, requesterId, onDispatched }) {
   const [kind, setKind] = useState('passageiro')
   const [modal, setModal] = useState('carro')
   const [loading, setLoading] = useState(false)
@@ -21,19 +22,14 @@ export default function RequestPanel({ nodes, vehicles, draft, setDraft, request
     return out
   }, [vehicles, kind])
 
-  const sameStop = draft.origin != null && draft.origin === draft.destination
-  const ready = draft.origin != null && draft.destination != null && !sameStop
+  const originNode = nodes.find((n) => n.id === origin)
+  const ready = origin != null && destination != null
 
   const pickKind = (next) => {
     setKind(next)
     setModal(KIND_META[next].modals[0])
     setResult(null)
   }
-
-  const setStop = (field) => (e) =>
-    setDraft((d) => ({ ...d, [field]: e.target.value === '' ? null : Number(e.target.value) }))
-
-  const swap = () => setDraft((d) => ({ origin: d.destination, destination: d.origin }))
 
   const submit = async (e) => {
     e.preventDefault()
@@ -43,8 +39,8 @@ export default function RequestPanel({ nodes, vehicles, draft, setDraft, request
       const trip = await api.dispatch({
         kind,
         modal,
-        origin_node: draft.origin,
-        destination_node: draft.destination,
+        origin_node: origin,
+        destination_node: destination,
         requested_by: requesterId,
       })
       setResult({ ok: true, trip })
@@ -56,12 +52,6 @@ export default function RequestPanel({ nodes, vehicles, draft, setDraft, request
     }
   }
 
-  const stopOptions = nodes.map((n) => (
-    <option key={n.id} value={n.id}>
-      {n.name}
-    </option>
-  ))
-
   const ResultIcon = result?.ok ? VEHICLE_META[result.trip.request.modal].Icon : null
 
   return (
@@ -69,7 +59,7 @@ export default function RequestPanel({ nodes, vehicles, draft, setDraft, request
       <div>
         <h2 className="font-display text-sm font-bold text-ink">Solicitar transporte</h2>
         <p className="mt-1.5 text-sm text-mist">
-          Escolha o que será levado, o veículo e o trajeto. Você também pode tocar nos pontos do mapa.
+          Escolha o que será levado, o veículo e o destino. Você também pode tocar nos pontos do mapa.
         </p>
       </div>
 
@@ -125,28 +115,19 @@ export default function RequestPanel({ nodes, vehicles, draft, setDraft, request
       </fieldset>
 
       <div className="flex flex-col gap-3">
-        <label className="block text-sm font-semibold text-ink">
+        <div className="text-sm font-semibold text-ink">
           <span className="mb-2 flex items-center gap-2">
             <span className="grid h-5 w-5 place-items-center rounded-full bg-wx-cyan-deep text-xs font-bold text-white">A</span>
             Origem
           </span>
-          <span className="relative block">
-            <select className={field} value={draft.origin ?? ''} onChange={setStop('origin')}>
-              <option value="">Escolha um ponto</option>
-              {stopOptions}
-            </select>
-            <MdKeyboardArrowDown size={22} aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-mist" />
-          </span>
-        </label>
-
-        <button
-          type="button"
-          onClick={swap}
-          className="flex items-center gap-1 self-end rounded-lg px-2 py-1.5 text-sm text-mist transition-colors hover:text-ink"
-        >
-          <MdSwapVert size={18} aria-hidden />
-          Inverter origem e destino
-        </button>
+          <p className="flex items-center gap-2 rounded-xl border border-line bg-tint px-3 py-3 text-base font-normal text-ink">
+            <MdMyLocation size={20} aria-hidden className="shrink-0 text-wx-cyan-deep" />
+            <span className="min-w-0">
+              {originNode?.name ?? 'Localizando…'}
+              <span className="block text-xs text-mist">Sua localização atual</span>
+            </span>
+          </p>
+        </div>
 
         <label className="block text-sm font-semibold text-ink">
           <span className="mb-2 flex items-center gap-2">
@@ -154,19 +135,19 @@ export default function RequestPanel({ nodes, vehicles, draft, setDraft, request
             Destino
           </span>
           <span className="relative block">
-            <select className={field} value={draft.destination ?? ''} onChange={setStop('destination')}>
+            <select className={field} value={destination ?? ''} onChange={(e) => setDestination(e.target.value === '' ? null : Number(e.target.value))}>
               <option value="">Escolha um ponto</option>
-              {stopOptions}
+              {nodes
+                .filter((n) => n.id !== origin)
+                .map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.name}
+                  </option>
+                ))}
             </select>
             <MdKeyboardArrowDown size={22} aria-hidden className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-mist" />
           </span>
         </label>
-
-        {sameStop && (
-          <p role="alert" className="text-sm text-warn-deep">
-            Origem e destino precisam ser pontos diferentes.
-          </p>
-        )}
       </div>
 
       <button
