@@ -4,8 +4,17 @@ from sqlmodel import Session, SQLModel, create_engine
 import models  # noqa: F401  (registra as tabelas no SQLModel antes do create_all)
 from config import settings
 
+def _url_do_banco(url: str) -> str:
+    """O SQLAlchemy 2.1 assume o driver psycopg (v3) quando a URL não diz qual usar.
+    Aqui fixamos o psycopg2, que é o instalado no requirements.txt."""
+    for prefixo in ("postgres://", "postgresql://"):  # "postgres://" é como alguns painéis entregam a URL
+        if url.startswith(prefixo):
+            return "postgresql+psycopg2://" + url[len(prefixo):]
+    return url
+
+
 # pool_pre_ping evita "conexão caiu" em Postgres gerenciado (Supabase derruba conexões ociosas)
-engine = create_engine(settings.DB_URL, pool_pre_ping=True)
+engine = create_engine(_url_do_banco(settings.DB_URL), pool_pre_ping=True)
 
 
 def criar_tabelas() -> None:
