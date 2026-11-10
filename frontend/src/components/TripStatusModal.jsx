@@ -37,7 +37,7 @@ export default function TripStatusModal({ trip, onCancel, onClose }) {
         ) : (
           <>
             <h2 id="trip-status-title" className="mt-4 font-display text-sm font-bold text-ink">
-              {trip.vehicle_id} aceitou sua viagem
+              {trip.vehicle_name} aceitou sua viagem
             </h2>
             <p className="mt-2 text-sm text-mist">Chega à origem em {fmtDuration(trip.eta_pickup_s)}. Acompanhe o veículo no mapa.</p>
             <button

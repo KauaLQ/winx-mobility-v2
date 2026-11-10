@@ -2,11 +2,15 @@
 import asyncio
 import logging
 
+import persistencia
+
 from fleet import CLOCK, FLEET, TRIPS, TickResult, Trip, TripPhase, Vehicle, VehicleStatus
 from graph_model import FACTORY_GRAPH as G
 from graph_model import congestion_factor, find_route, route_cost_s, travel_time_s
 
 REROUTE_THRESHOLD = 1.5  # fator de congestionamento (em alguma via da rota) que dispara o recálculo
+
+CHANGED: set[int] = set()  # corridas que mudaram de fase/recálculos no tick e precisam ir ao banco
 
 
 # ---------- Movimento ----------
@@ -34,11 +38,13 @@ def _maybe_reroute(v: Vehicle, trip: Trip, events: list[str]) -> None:
     if new["nodes"] != v.route and new["estimated_time_s"] < round(route_cost_s(G, v.route, v.type), 1):
         v.route = new["nodes"]
         trip.reroutes += 1
+        CHANGED.add(trip.id)
         events.append(f"{v.id}: rota recalculada por congestionamento -> {new['nodes']}")
 
 
 def _finish_phase(v: Vehicle, trip: Trip, now: float, events: list[str]) -> bool:
     """Fim da rota da fase atual. Retorna False quando a viagem termina."""
+    CHANGED.add(trip.id)
     if trip.phase == TripPhase.BUSCANDO:
         trip.phase = TripPhase.EM_TRANSPORTE
         v.route = find_route(G, v.current_node, trip.request.destination_node, v.type)["nodes"]
@@ -104,6 +110,28 @@ def tick(dt_s: float) -> TickResult:
 _task: asyncio.Task | None = None
 
 
+def drain_changes() -> list[dict]:
+    """Fotografa (no event loop) as corridas alteradas desde a última chamada."""
+    snaps = []
+    for trip_id in CHANGED:
+        trip = TRIPS[trip_id]
+        vehicle = FLEET.get(trip.vehicle_id)
+        snaps.append({"trip": trip.model_dump(), "node": vehicle.current_node if vehicle else None})
+    CHANGED.clear()
+    return snaps
+
+
+async def persistir_mudancas() -> None:
+    """Grava no banco, numa thread, sem travar o tick. Falha de banco não derruba a simulação."""
+    snaps = drain_changes()
+    if not snaps:
+        return
+    try:
+        await asyncio.to_thread(persistencia.salvar_corridas, snaps)
+    except Exception:
+        logging.exception("Falha ao gravar corridas no banco")
+
+
 async def _loop(interval_s: float, dt_s: float) -> None:
     while True:
         try:
@@ -111,6 +139,7 @@ async def _loop(interval_s: float, dt_s: float) -> None:
         except Exception:
             logging.exception("Falha no tick da simulação; loop interrompido")
             return
+        await persistir_mudancas()
         await asyncio.sleep(interval_s)
 
 

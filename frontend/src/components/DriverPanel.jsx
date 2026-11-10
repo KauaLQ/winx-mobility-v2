@@ -17,8 +17,10 @@ export default function DriverPanel({ vehicle, trips, edges, nodesById }) {
   })
 
   const avgTrip = done.length ? done.reduce((s, t) => s + t.completed_at_s - t.created_at_s, 0) / done.length : 0
+  const rated = done.filter((t) => t.rating != null)
   const stats = [
     ['viagens concluídas', done.length],
+    ['avaliação média', rated.length ? `★ ${(rated.reduce((s, t) => s + t.rating, 0) / rated.length).toFixed(1)}` : '—'],
     ['tempo médio por viagem', done.length ? fmtDuration(avgTrip) : '—'],
     ['distância percorrida', fmtDistance(done.reduce((s, t) => s + t.distance_m, 0))],
     ['recálculos de rota', trips.reduce((s, t) => s + t.reroutes, 0)],
@@ -34,9 +36,9 @@ export default function DriverPanel({ vehicle, trips, edges, nodesById }) {
           <meta.Icon size={26} aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-sm font-bold text-ink">{vehicle.id}</h2>
+          <h2 className="font-display text-sm font-bold text-ink">{vehicle.name}</h2>
           <p className="mt-1 text-sm text-mist">
-            {meta.label} para {vehicle.allowed_kinds.map((k) => KIND_META[k].label.toLowerCase()).join(' e ')}
+            {meta.label} · {vehicle.plate} para {vehicle.allowed_kinds.map((k) => KIND_META[k].label.toLowerCase()).join(' e ')}
           </p>
         </div>
         <span

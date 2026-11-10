@@ -1,37 +1,80 @@
 import { useState } from 'react'
+import { api } from './api'
+import AuthScreen from './components/AuthScreen'
 import ProfileSelect from './components/ProfileSelect'
 import VehicleSelect from './components/VehicleSelect'
 import Workspace from './components/Workspace'
+import { PROFILES } from './constants'
+import { AuthProvider } from './context/AuthContext'
+import { useAuth } from './context/useAuth'
 
-export default function App() {
-  // Sem login por enquanto: a seleção define o perfil e, para o motorista, o veículo.
-  // Depois, o login real entra entre essas telas e o Workspace.
-  const [profileId, setProfileId] = useState(null)
-  const [vehicleId, setVehicleId] = useState(null)
-  const [direction, setDirection] = useState('forward') // sentido da última troca de tela (define de que lado a nova tela entra)
+const PROFILE_KEY = 'winx.profile' // o login com Google sai do app e volta: guardamos o perfil escolhido
+
+function Message({ children }) {
+  return <p className="m-auto p-4 text-sm text-mist">{children}</p>
+}
+
+function Screens() {
+  const { user, authenticated, loading, error, reloadUser, signOut } = useAuth()
+  const [profileId, setProfileId] = useState(() => {
+    const stored = localStorage.getItem(PROFILE_KEY)
+    return PROFILES[stored] ? stored : null
+  })
+  const [driver, setDriver] = useState(null) // motorista: { vehicleId, driverId } depois de escolher o veículo
+  const [direction, setDirection] = useState('forward') // sentido da última troca de tela (de que lado a nova entra)
 
   const choose = (id) => {
     setDirection('forward')
+    localStorage.setItem(PROFILE_KEY, id)
     setProfileId(id)
   }
-  const login = (id) => {
+  const pickVehicle = (vehicleId, driverId) => {
     setDirection('forward')
-    setVehicleId(id)
+    setDriver({ vehicleId, driverId })
   }
-  const exit = () => {
+  const exit = async () => {
     setDirection('back')
+    if (driver) await api.releaseVehicle(driver.vehicleId).catch(() => {}) // libera o veículo para outro motorista
+    localStorage.removeItem(PROFILE_KEY)
     setProfileId(null)
-    setVehicleId(null)
+    setDriver(null)
+    await signOut()
   }
 
+  // O gestor entra por credenciais; usuário e motorista, pelo Google (papel "usuario").
+  const roleOk = user && (profileId === 'gestor' ? user.role === 'gestor' : user.role === 'usuario')
+
   let pageKey = 'workspace'
-  let page = <Workspace profileId={profileId} vehicleId={vehicleId} onExit={exit} />
-  if (!profileId) {
+  let page = null
+  if (loading) {
+    pageKey = 'loading'
+    page = <Message>Carregando…</Message>
+  } else if (!profileId) {
     pageKey = 'home'
     page = <ProfileSelect onSelect={choose} />
-  } else if (profileId === 'motorista' && !vehicleId) {
+  } else if (authenticated && error) {
+    pageKey = 'error'
+    page = (
+      <div className="m-auto flex w-full max-w-xs flex-col gap-3 p-4 text-center">
+        <p role="alert" className="text-sm text-mist">{error}</p>
+        <button type="button" onClick={reloadUser} className="rounded-xl bg-primary py-3 text-base font-bold text-white transition-colors hover:bg-primary-hover">
+          Tentar novamente
+        </button>
+        <button type="button" onClick={exit} className="rounded-xl border border-line bg-surface py-3 text-base font-semibold text-mist transition-colors hover:text-ink">
+          Sair
+        </button>
+      </div>
+    )
+  } else if (!roleOk) {
+    pageKey = 'auth'
+    page = <AuthScreen profileId={profileId} onBack={exit} />
+  } else if (profileId === 'motorista' && !driver) {
     pageKey = 'vehicle'
-    page = <VehicleSelect onSelect={login} onBack={exit} />
+    page = <VehicleSelect onSelect={pickVehicle} onBack={exit} />
+  } else {
+    // who = quem "é dono" das viagens do histórico: o usuário (quem pediu) ou o motorista (quem conduziu)
+    const who = profileId === 'motorista' ? driver.driverId : user.id
+    page = <Workspace profileId={profileId} vehicleId={driver?.vehicleId} who={who} onExit={exit} />
   }
 
   return (
@@ -45,5 +88,13 @@ export default function App() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Screens />
+    </AuthProvider>
   )
 }

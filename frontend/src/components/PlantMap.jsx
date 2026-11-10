@@ -336,7 +336,7 @@ export default function PlantMap({
               key={v.id}
               role="button"
               tabIndex={0}
-              aria-label={`Veículo ${v.id}`}
+              aria-label={`Veículo ${v.name}`}
               className="cursor-pointer"
               style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${TICK_MS}ms linear` }}
               onClick={() => !moved.current && select()}
@@ -350,7 +350,7 @@ export default function PlantMap({
               <meta.Icon size={16} x={-8} y={-8} style={{ color: meta.deep }} className="pointer-events-none" />
               {isSel && (
                 <text y="-24" textAnchor="middle" fontSize="12" fontWeight="700" fill={C.ink} stroke={C.page} strokeWidth="4" paintOrder="stroke">
-                  {v.id}
+                  {v.name}
                 </text>
               )}
             </g>

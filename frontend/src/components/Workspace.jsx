@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { MdFlag, MdPersonPinCircle } from 'react-icons/md'
 import { api } from '../api'
-import { KIND_META, PALETTE, PROFILES, USER_ID } from '../constants'
+import { KIND_META, PALETTE, PROFILES } from '../constants'
 import { useLiveData } from '../hooks/useLiveData'
 import DashboardPanel from './DashboardPanel'
 import DriverPanel from './DriverPanel'
@@ -15,6 +15,7 @@ import SimControls from './SimControls'
 import StatsStrip from './StatsStrip'
 import TripDoneModal from './TripDoneModal'
 import TripStatusModal from './TripStatusModal'
+import VehicleFormModal from './VehicleFormModal'
 
 const TAB_IDS = ['home', 'map', 'list']
 const EMPTY_DRAFT = { origin: null, destination: null }
@@ -22,7 +23,7 @@ const ACTIVE_PHASES = ['aguardando', 'buscando', 'em_transporte']
 const doneKey = (trip) => `${trip.id}:${trip.completed_at_s}` // o tempo evita confundir ids reaproveitados após um reset
 
 // vehicleId: veículo escolhido no "login" do motorista (undefined nos outros perfis).
-export default function Workspace({ profileId, vehicleId, onExit }) {
+export default function Workspace({ profileId, vehicleId, who, onExit }) {
   const profile = PROFILES[profileId]
   const tabs = profile.tabs.map(([label, Icon], i) => [TAB_IDS[i], label, Icon])
 
@@ -36,13 +37,14 @@ export default function Workspace({ profileId, vehicleId, onExit }) {
   const [dismissed, setDismissed] = useState([]) // motorista: ofertas recusadas
   const [accepting, setAccepting] = useState(false)
   const [seenDone, setSeenDone] = useState(null) // viagens concluídas que já eram conhecidas ou já foram comemoradas
+  const [vehicleFormOpen, setVehicleFormOpen] = useState(false) // gestão: modal de cadastro de veículo
 
   const nodes = useMemo(() => graph?.nodes ?? [], [graph])
   const nodesById = useMemo(() => Object.fromEntries(nodes.map((n) => [n.id, n])), [nodes])
   const edges = graph?.edges ?? []
   const vehicles = sim?.vehicles ?? []
   const trips = sim?.trips ?? []
-  const myTrips = trips.filter((t) => profile.ownsTrip(t, vehicleId ?? USER_ID))
+  const myTrips = trips.filter((t) => profile.ownsTrip(t, who))
   const myVehicle = vehicles.find((v) => v.id === vehicleId)
 
   // Na primeira leitura, as concluídas existentes não geram modal: só as que terminarem a partir daqui.
@@ -109,7 +111,7 @@ export default function Workspace({ profileId, vehicleId, onExit }) {
   const acceptOffer = async (trip) => {
     setAccepting(true)
     try {
-      await api.acceptTrip(trip.id, vehicleId)
+      await api.acceptTrip(trip.id)
       setView('map')
     } catch {
       // Outro veículo foi mais rápido (ou a corrida foi cancelada): a oferta some.
@@ -161,7 +163,6 @@ export default function Workspace({ profileId, vehicleId, onExit }) {
               origin={userNodeId}
               destination={destination}
               setDestination={setDestination}
-              requesterId={USER_ID}
               onDispatched={onDispatched}
             />
           )}
@@ -192,7 +193,15 @@ export default function Workspace({ profileId, vehicleId, onExit }) {
 
         <aside inert={view !== 'list'} className={`${panel('list')} scroll-thin overflow-y-auto`}>
           {profileId === 'gestor' ? (
-            <FleetPanel vehicles={vehicles} trips={trips} nodesById={nodesById} selectedId={selectedId} onSelect={setSelectedId} />
+            <FleetPanel
+              vehicles={vehicles}
+              trips={trips}
+              nodesById={nodesById}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onAdd={() => setVehicleFormOpen(true)}
+              onChanged={refresh}
+            />
           ) : (
             <HistoryPanel trips={myTrips} nodesById={nodesById} showVehicle={profileId === 'usuario'} />
           )}
@@ -213,6 +222,16 @@ export default function Workspace({ profileId, vehicleId, onExit }) {
         {/* Conclusão da viagem: motorista e usuário, em qualquer aba */}
         {finishedTrip && (
           <TripDoneModal key={doneKey(finishedTrip)} trip={finishedTrip} nodesById={nodesById} role={profileId} onClose={closeDone} />
+        )}
+
+        {vehicleFormOpen && (
+          <VehicleFormModal
+            onClose={() => setVehicleFormOpen(false)}
+            onCreated={() => {
+              setVehicleFormOpen(false)
+              refresh()
+            }}
+          />
         )}
       </main>
 

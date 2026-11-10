@@ -7,7 +7,7 @@ const field =
   'w-full appearance-none rounded-xl border border-line bg-surface px-3 py-3 pr-10 text-base text-ink transition-colors focus:border-primary'
 
 // A origem é sempre a localização atual do usuário (`origin`); só o destino é escolhido.
-export default function RequestPanel({ nodes, vehicles, origin, destination, setDestination, requesterId, onDispatched }) {
+export default function RequestPanel({ nodes, vehicles, origin, destination, setDestination, onDispatched }) {
   const [kind, setKind] = useState('passageiro')
   const [modal, setModal] = useState('carro')
   const [loading, setLoading] = useState(false)
@@ -41,7 +41,6 @@ export default function RequestPanel({ nodes, vehicles, origin, destination, set
         modal,
         origin_node: origin,
         destination_node: destination,
-        requested_by: requesterId,
       })
       setResult({ ok: true, trip })
       onDispatched(trip)

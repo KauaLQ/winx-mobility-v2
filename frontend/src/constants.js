@@ -62,13 +62,9 @@ export const PHASE_LABEL = {
 }
 
 // ---------- Perfis de acesso ----------
-// Sem login por enquanto: o perfil é escolhido na tela inicial e, para o motorista, o veículo na tela
-// seguinte. Quando houver autenticação, USER_ID e o veículo do motorista passam a vir da sessão.
-export const USER_ID = 'usuario-1'
-
 // tabs = [rótulo, ícone] da 1ª, 2ª e 3ª aba, nessa ordem.
 // map = o que o mapa mostra e permite para o perfil (os veículos exibidos são definidos no Workspace).
-// ownsTrip(trip, who) = quais viagens aparecem no histórico; who = veículo do motorista ou USER_ID.
+// ownsTrip(trip, who) = quais viagens aparecem no histórico; who = id do usuário (quem pediu) ou do motorista (quem conduziu).
 export const PROFILES = {
   usuario: {
     label: 'Usuário final',
@@ -92,7 +88,7 @@ export const PROFILES = {
       ['Histórico', MdHistory],
     ],
     map: { restrictions: true, simControls: false },
-    ownsTrip: (trip, who) => trip.vehicle_id === who,
+    ownsTrip: (trip, who) => trip.driver_id === who,
   },
   gestor: {
     label: 'Gestão',

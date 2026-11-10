@@ -39,8 +39,9 @@ def dispatch(req: TransportRequest) -> Trip:
             f"Nenhum veículo '{req.modal.value}' disponível para '{req.kind.value}' no momento"
         )
 
-    trip = Trip(
-        id=f"trip-{len(TRIPS) + 1}",
+    # id = 0: o id real vem do banco. Quem chama grava a corrida e registra em TRIPS.
+    return Trip(
+        id=0,
         request=req,
         phase=TripPhase.AGUARDANDO,
         eta_pickup_s=0.0,
@@ -49,11 +50,9 @@ def dispatch(req: TransportRequest) -> Trip:
         created_at_s=CLOCK["s"],
         offers=offers,
     )
-    TRIPS[trip.id] = trip
-    return trip
 
 
-def accept(trip_id: str, vehicle_id: str) -> Trip:
+def accept(trip_id: int, vehicle_id: int, driver_id: int) -> Trip:
     """O veículo aceita a corrida. Levanta LookupError se ela não está mais disponível para ele."""
     trip, vehicle = TRIPS[trip_id], FLEET[vehicle_id]
     if trip.phase != TripPhase.AGUARDANDO:
@@ -67,6 +66,8 @@ def accept(trip_id: str, vehicle_id: str) -> Trip:
         raise LookupError("Sem rota até a origem da corrida")
 
     trip.vehicle_id = vehicle_id
+    trip.vehicle_name = vehicle.name
+    trip.driver_id = driver_id  # a avaliação fica ligada ao motorista, não só ao veículo
     trip.phase = TripPhase.BUSCANDO
     trip.eta_pickup_s = pickup["estimated_time_s"]
     trip.eta_total_s = round(pickup["estimated_time_s"] + trip.eta_total_s, 1)
@@ -79,7 +80,7 @@ def accept(trip_id: str, vehicle_id: str) -> Trip:
     return trip
 
 
-def cancel(trip_id: str) -> Trip:
+def cancel(trip_id: int) -> Trip:
     """Cancela um pedido que ninguém aceitou ainda. Levanta LookupError nos demais casos."""
     trip = TRIPS[trip_id]
     if trip.phase != TripPhase.AGUARDANDO:
@@ -88,7 +89,7 @@ def cancel(trip_id: str) -> Trip:
     return trip
 
 
-def review(trip_id: str, rating: int, comment: str | None) -> Trip:
+def review(trip_id: int, rating: int, comment: str | None) -> Trip:
     """Registra a avaliação de uma viagem concluída. Levanta LookupError se não for possível."""
     trip = TRIPS[trip_id]
     if trip.phase != TripPhase.CONCLUIDA:

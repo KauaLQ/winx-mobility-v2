@@ -1,7 +1,13 @@
-"""Modelos e estado em memória: frota, pedidos e viagens."""
+"""Modelos e estado em memória da simulação. A persistência fica em persistencia.py."""
+import re
 from enum import Enum
-from pydantic import BaseModel, Field
-from graph_model import FACTORY_GRAPH, VehicleType
+from typing import Annotated, Optional
+
+from pydantic import BaseModel, Field, StringConstraints, field_validator
+
+from graph_model import VehicleType
+
+BASE_NODE = 1  # Portaria: onde veículos novos aparecem e para onde voltam no reset
 
 
 class VehicleStatus(str, Enum):
@@ -30,24 +36,50 @@ DEFAULT_ALLOWED_KINDS = {
     VehicleType.CAMINHAO: [RequestKind.INSUMO],
 }
 
+_PLATE_RE = re.compile(r"^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$")  # ABC1234 (antiga) e ABC1D23 (Mercosul)
+Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=60)]
+
+
+def _normalize_plate(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return value
+    plate = re.sub(r"[\s-]", "", value).upper()
+    if not _PLATE_RE.match(plate):
+        raise ValueError("Placa inválida. Use o formato ABC1D23 ou ABC-1234")
+    return plate
+
 
 # ---------- Schemas ----------
 
 class VehicleCreate(BaseModel):
-    id: str
+    name: Name                  # nome/modelo
+    plate: str
     type: VehicleType
-    current_node: int
-    allowed_kinds: list[RequestKind] | None = None  # restrição; None = padrão do modal
+
+    _plate = field_validator("plate")(_normalize_plate)
+
+
+class VehicleUpdate(BaseModel):
+    name: Optional[Name] = None
+    plate: Optional[str] = None
+    type: Optional[VehicleType] = None
+    active: Optional[bool] = None
+
+    _plate = field_validator("plate")(_normalize_plate)
 
 
 class Vehicle(BaseModel):
-    id: str
+    id: int                    # id do banco
+    name: str
+    plate: str
     type: VehicleType
     current_node: int          # último nó pelo qual passou (em trânsito, é a origem da via atual)
     allowed_kinds: list[RequestKind]
+    driver_id: int | None = None      # motorista vinculado (None = veículo livre para escolher)
+    driver_name: str | None = None
     status: VehicleStatus = VehicleStatus.DISPONIVEL
     # --- estado da simulação (somente leitura) ---
-    trip_id: str | None = None
+    trip_id: int | None = None
     route: list[int] = []      # nós restantes da fase atual; route[0] == current_node
     edge_remaining_s: float | None = None  # tempo que falta para terminar a via atual
     edge_total_s: float = 0.0
@@ -60,11 +92,11 @@ class TransportRequest(BaseModel):
     origin_node: int
     destination_node: int
     modal: VehicleType         # modal necessário
-    requested_by: str | None = None  # quem pediu; vira o usuário autenticado quando houver login
+    requested_by: int | None = None  # id do usuário; o backend sempre sobrescreve com o usuário autenticado
 
 
 class Trip(BaseModel):
-    id: str
+    id: int                    # id da corrida no banco (0 só entre o despacho e o INSERT)
     request: TransportRequest
     phase: TripPhase
     # Enquanto AGUARDANDO: estimativas só do trajeto origem -> destino (eta_pickup_s = 0).
@@ -73,8 +105,10 @@ class Trip(BaseModel):
     eta_total_s: float
     distance_m: float
     created_at_s: float
-    vehicle_id: str | None = None      # None até um motorista aceitar
-    offers: dict[str, float] = {}      # veículos que receberam o pedido -> tempo até a origem (s)
+    vehicle_id: int | None = None      # None até um motorista aceitar
+    vehicle_name: str | None = None
+    driver_id: int | None = None       # motorista que aceitou (é a ele que a avaliação fica ligada)
+    offers: dict[int, float] = {}      # veículos que receberam o pedido -> tempo até a origem (s)
     completed_at_s: float | None = None
     reroutes: int = 0
     rating: int | None = None      # avaliação opcional do solicitante (1 a 5)
@@ -99,46 +133,8 @@ class SimulationState(BaseModel):
     trips: list[Trip]
 
 
-# ---------- Estado em memória ----------
+# ---------- Estado em memória (carregado do banco por persistencia.carregar_estado) ----------
 
-FLEET: dict[str, Vehicle] = {}
-TRIPS: dict[str, Trip] = {}
+FLEET: dict[int, Vehicle] = {}
+TRIPS: dict[int, Trip] = {}
 CLOCK = {"s": 0.0}  # relógio simulado, em segundos
-
-SEED_FLEET = [
-    ("carro-1", VehicleType.CARRO, 1),
-    ("carro-2", VehicleType.CARRO, 1),
-    ("carro-3", VehicleType.CARRO, 1),
-    ("van-1", VehicleType.VAN, 3),
-    ("onibus-1", VehicleType.ONIBUS, 2),
-    ("caminhao-1", VehicleType.CAMINHAO, 8),
-    ("caminhao-2", VehicleType.CAMINHAO, 6),
-]
-
-
-def add_vehicle(data: VehicleCreate) -> Vehicle:
-    node = FACTORY_GRAPH.nodes[data.current_node]
-    vehicle = Vehicle(
-        id=data.id,
-        type=data.type,
-        current_node=data.current_node,
-        allowed_kinds=data.allowed_kinds or list(DEFAULT_ALLOWED_KINDS[data.type]),
-        x=node["x"],
-        y=node["y"],
-    )
-    FLEET[vehicle.id] = vehicle
-    return vehicle
-
-
-def reset_world() -> None:
-    """Zera relógio, viagens e tráfego e recria a frota de exemplo."""
-    FLEET.clear()
-    TRIPS.clear()
-    CLOCK["s"] = 0.0
-    for _, _, edge in FACTORY_GRAPH.edges(data=True):
-        edge["load"] = 0
-    for vid, vtype, node in SEED_FLEET:
-        add_vehicle(VehicleCreate(id=vid, type=vtype, current_node=node))
-
-
-reset_world()

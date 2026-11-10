@@ -28,7 +28,7 @@ export default function TripDoneModal({ trip, nodesById, role, onClose }) {
     ['Duração', fmtDuration(trip.completed_at_s - trip.created_at_s)],
     ['Distância', fmtDistance(trip.distance_m)],
   ]
-  if (rateable) rows.push(['Veículo', trip.vehicle_id])
+  if (rateable) rows.push(['Veículo', trip.vehicle_name])
   if (trip.reroutes > 0) rows.push(['Recálculos de rota', trip.reroutes])
 
   const send = async () => {

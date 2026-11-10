@@ -43,7 +43,7 @@ export default function HistoryPanel({ trips, nodesById, showVehicle }) {
               </p>
               <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-mist">
                 <span>Pedida às {fmtClock(t.created_at_s)}</span>
-                {showVehicle && accepted && <span>{t.vehicle_id}</span>}
+                {showVehicle && accepted && <span>{t.vehicle_name}</span>}
                 {accepted && <span>{finished ? `Duração ${fmtDuration(t.completed_at_s - t.created_at_s)}` : `Previsão ${fmtDuration(t.eta_total_s)}`}</span>}
                 {accepted && <span>{fmtDistance(t.distance_m)}</span>}
                 {t.rating != null && <span>★ {t.rating}</span>}
