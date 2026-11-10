@@ -62,7 +62,8 @@ export default function AuthScreen({ profileId, onBack }) {
       </header>
       <div className="h-0.5 shrink-0 bg-wx-gradient" />
 
-      <main className="flex flex-1 flex-col gap-5 p-4">
+      {/* justify-center: o conteúdo fica centralizado verticalmente entre o cabeçalho e o rodapé */}
+      <main className="flex flex-1 flex-col justify-center gap-5 p-4">
         <div>
           <h1 className="font-display text-sm font-bold text-ink">{isManager ? 'Acesso da gestão' : 'Entrar na sua conta'}</h1>
           <p className="mt-1.5 text-sm text-mist">
@@ -108,6 +109,15 @@ export default function AuthScreen({ profileId, onBack }) {
           </button>
         )}
       </main>
+
+      {/* Mesmo degradê do cabeçalho: as cores vêm das variáveis do perfil (data-profile) */}
+      <footer className="shrink-0 bg-linear-to-b from-navy to-navy-deep">
+        <div className="h-0.5 bg-wx-gradient" />
+        <div className="flex flex-col items-center gap-1 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5 text-center">
+          <p className="mt-1 font-display text-xs font-bold tracking-wide text-white">WINX Mobility</p>
+          <p className="text-xs text-navy-soft">© 2026</p>
+        </div>
+      </footer>
     </div>
   )
 }
